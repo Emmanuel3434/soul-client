@@ -22,6 +22,16 @@ fn default_role() -> String {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SavedSkin {
+    pub id: String,
+    pub name: String,
+    /// data URL (image/png)
+    pub data: String,
+    #[serde(default)]
+    pub created_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameInstance {
     pub id: String,
     pub name: String,
@@ -61,6 +71,8 @@ pub struct LauncherConfig {
     pub selected_account: Option<String>,
     #[serde(default = "default_instances")]
     pub instances: Vec<GameInstance>,
+    #[serde(default)]
+    pub saved_skins: Vec<SavedSkin>,
 
     // Minecraft / launch
     #[serde(default = "default_memory")]
@@ -118,6 +130,30 @@ fn default_instances() -> Vec<GameInstance> {
             version: "1.21.1".into(),
             loader: "fabric".into(),
             loader_version: "0.16.14".into(),
+            use_fabric: true,
+            whitelist: false,
+            cover: "fabric".into(),
+            image: String::new(),
+        },
+        GameInstance {
+            id: "soul-fabric-119".into(),
+            name: "Soul Fabric 1.19".into(),
+            description: "Fabric para Minecraft 1.19.2".into(),
+            version: "1.19.2".into(),
+            loader: "fabric".into(),
+            loader_version: "0.14.21".into(),
+            use_fabric: true,
+            whitelist: false,
+            cover: "fabric".into(),
+            image: String::new(),
+        },
+        GameInstance {
+            id: "soul-fabric-118".into(),
+            name: "Soul Fabric 1.18".into(),
+            description: "Fabric para Minecraft 1.18.2".into(),
+            version: "1.18.2".into(),
+            loader: "fabric".into(),
+            loader_version: "0.14.21".into(),
             use_fabric: true,
             whitelist: false,
             cover: "fabric".into(),
@@ -187,7 +223,7 @@ fn default_bg() -> String {
     "default".to_string()
 }
 fn default_accent() -> String {
-    "#3dd68c".to_string()
+    "#4c8dff".to_string()
 }
 
 impl Default for LauncherConfig {
@@ -196,6 +232,7 @@ impl Default for LauncherConfig {
             accounts: vec![],
             selected_account: None,
             instances: default_instances(),
+            saved_skins: vec![],
             memory_mb: 4096,
             memory_min_mb: 1024,
             java_path: "java".to_string(),

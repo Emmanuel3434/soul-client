@@ -1,10 +1,64 @@
 const { invoke } = window.__TAURI__.core;
 
 const LOADER_VERSIONS = {
-  fabric: ["0.16.14", "0.16.10", "0.16.9", "0.15.11", "0.15.7", "0.14.25", "0.14.22"],
-  forge: ["47.3.0", "47.2.0", "49.0.31", "50.0.20", "51.0.33"],
+  fabric: [
+    "0.16.14",
+    "0.16.10",
+    "0.16.9",
+    "0.15.11",
+    "0.15.7",
+    "0.14.25",
+    "0.14.22",
+    "0.14.21",
+    "0.14.19",
+    "0.14.14",
+    "0.14.9",
+    "0.13.3",
+    "0.12.12",
+  ],
+  forge: ["47.3.0", "47.2.0", "49.0.31", "50.0.20", "51.0.33", "43.3.0", "40.2.0"],
   neoforge: ["21.1.77", "21.1.66", "20.4.237", "20.2.88"],
 };
+
+/** Recommended Fabric Loader per Minecraft version (1.18 / 1.19 focus). */
+const FABRIC_DEFAULT_FOR_MC = {
+  "1.21.1": "0.16.14",
+  "1.21": "0.16.14",
+  "1.20.6": "0.15.11",
+  "1.20.4": "0.15.11",
+  "1.20.1": "0.15.11",
+  "1.19.4": "0.14.22",
+  "1.19.3": "0.14.21",
+  "1.19.2": "0.14.21",
+  "1.19": "0.14.19",
+  "1.18.2": "0.14.21",
+  "1.18.1": "0.14.14",
+  "1.18": "0.14.9",
+  "1.16.5": "0.14.9",
+};
+
+function recommendedFabricLoader(mcVersion) {
+  return FABRIC_DEFAULT_FOR_MC[mcVersion] || LOADER_VERSIONS.fabric[0];
+}
+
+/** Compatible Fabric loaders for a given Minecraft version (recommended first). */
+function fabricLoadersForMc(mcVersion) {
+  const preferred = recommendedFabricLoader(mcVersion);
+  const all = LOADER_VERSIONS.fabric;
+  let prefixes = ["0.16.", "0.15.", "0.14.", "0.13.", "0.12."];
+  if (mcVersion.startsWith("1.18") || mcVersion.startsWith("1.19")) {
+    prefixes = ["0.14.", "0.13."];
+  } else if (mcVersion.startsWith("1.20")) {
+    prefixes = ["0.15.", "0.14.", "0.16."];
+  } else if (mcVersion.startsWith("1.21")) {
+    prefixes = ["0.16.", "0.15."];
+  } else if (mcVersion.startsWith("1.16") || mcVersion.startsWith("1.17")) {
+    prefixes = ["0.14.", "0.13.", "0.12."];
+  }
+  const compatible = all.filter((v) => prefixes.some((p) => v.startsWith(p)));
+  const list = compatible.length ? compatible : all;
+  return [preferred, ...list.filter((v) => v !== preferred)];
+}
 
 let currentAccount = null;
 let currentConfig = null;
@@ -14,6 +68,7 @@ let openMenuId = null;
 let playingInstanceId = null;
 let pendingImageData = "";
 let editingInstanceId = null;
+let installedVersions = [];
 
 function isAdmin() {
   return currentAccount && String(currentAccount.role || "").toLowerCase() === "admin";
@@ -42,12 +97,21 @@ function showScreen(id) {
 }
 
 function setMainView(view) {
+  if (view !== "skins") {
+    try {
+      destroySkinViewer();
+    } catch (_) {}
+  }
   document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
-  document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
+  document.querySelectorAll(".sidebar-item").forEach((n) => n.classList.remove("active"));
   const viewEl = document.getElementById("view-" + view);
   if (viewEl) viewEl.classList.add("active");
-  const nav = document.querySelector(`.nav-item[data-view="${view}"]`);
+  const navView = view === "library" ? "home" : view;
+  const nav = document.querySelector(`.sidebar-item[data-view="${navView}"]`);
   if (nav) nav.classList.add("active");
+  if (view === "account") {
+    /* account has no sidebar item highlight beyond avatar */
+  }
 
   if (view === "settings") {
     fillSettingsForm();
@@ -90,49 +154,86 @@ function normalizeInstance(inst) {
   };
 }
 
+function defaultInstancesList() {
+  return [
+    {
+      id: "soul-fabric",
+      name: "Soul Fabric",
+      description: "Instancia Fabric recomendada",
+      version: "1.21.1",
+      loader: "fabric",
+      loader_version: "0.16.14",
+      use_fabric: true,
+      whitelist: false,
+      cover: "fabric",
+      image: "",
+    },
+    {
+      id: "soul-fabric-119",
+      name: "Soul Fabric 1.19",
+      description: "Fabric para Minecraft 1.19.2",
+      version: "1.19.2",
+      loader: "fabric",
+      loader_version: "0.14.21",
+      use_fabric: true,
+      whitelist: false,
+      cover: "fabric",
+      image: "",
+    },
+    {
+      id: "soul-fabric-118",
+      name: "Soul Fabric 1.18",
+      description: "Fabric para Minecraft 1.18.2",
+      version: "1.18.2",
+      loader: "fabric",
+      loader_version: "0.14.21",
+      use_fabric: true,
+      whitelist: false,
+      cover: "fabric",
+      image: "",
+    },
+    {
+      id: "vanilla-latest",
+      name: "Vanilla Latest",
+      description: "Minecraft vanilla sin mods",
+      version: "1.21.1",
+      loader: "vanilla",
+      loader_version: "",
+      use_fabric: false,
+      whitelist: false,
+      cover: "vanilla",
+      image: "",
+    },
+    {
+      id: "modded-pack",
+      name: "Modded Pack",
+      description: "Pack con mods y whitelist",
+      version: "1.20.1",
+      loader: "fabric",
+      loader_version: "0.15.11",
+      use_fabric: true,
+      whitelist: true,
+      cover: "modded",
+      image: "",
+    },
+  ];
+}
+
 function ensureInstances() {
   if (!currentConfig.instances || currentConfig.instances.length === 0) {
-    currentConfig.instances = [
-      {
-        id: "soul-fabric",
-        name: "Soul Fabric",
-        description: "Instancia Fabric recomendada",
-        version: "1.21.1",
-        loader: "fabric",
-        loader_version: "0.16.14",
-        use_fabric: true,
-        whitelist: false,
-        cover: "fabric",
-        image: "",
-      },
-      {
-        id: "vanilla-latest",
-        name: "Vanilla Latest",
-        description: "Minecraft vanilla sin mods",
-        version: "1.21.1",
-        loader: "vanilla",
-        loader_version: "",
-        use_fabric: false,
-        whitelist: false,
-        cover: "vanilla",
-        image: "",
-      },
-      {
-        id: "modded-pack",
-        name: "Modded Pack",
-        description: "Pack con mods y whitelist",
-        version: "1.20.1",
-        loader: "fabric",
-        loader_version: "0.15.11",
-        use_fabric: true,
-        whitelist: true,
-        cover: "modded",
-        image: "",
-      },
-    ];
-  } else {
-    currentConfig.instances = currentConfig.instances.map(normalizeInstance);
+    currentConfig.instances = defaultInstancesList();
+    return true;
   }
+  currentConfig.instances = currentConfig.instances.map(normalizeInstance);
+  const ids = new Set(currentConfig.instances.map((i) => i.id));
+  let added = false;
+  for (const preset of defaultInstancesList()) {
+    if ((preset.id === "soul-fabric-118" || preset.id === "soul-fabric-119") && !ids.has(preset.id)) {
+      currentConfig.instances.push(preset);
+      added = true;
+    }
+  }
+  return added;
 }
 
 function applyAppearance() {
@@ -142,10 +243,10 @@ function applyAppearance() {
   document.body.classList.toggle("no-animations", currentConfig.animations === false);
   document.body.classList.toggle("transparencies", !!currentConfig.transparencies);
   document.body.dataset.bg = currentConfig.background || "default";
-  let accent = currentConfig.accent_color || "#3dd68c";
+  let accent = currentConfig.accent_color || "#4c8dff";
   // Guard against near-black accents that hide the Play button
   if (!/^#[0-9a-fA-F]{6}$/.test(accent) || isAccentTooDark(accent)) {
-    accent = "#3dd68c";
+    accent = "#4c8dff";
     currentConfig.accent_color = accent;
   }
   document.documentElement.style.setProperty("--accent", accent);
@@ -163,13 +264,15 @@ function isAccentTooDark(hex) {
 
 async function init() {
   currentConfig = await invoke("load_config");
-  ensureInstances();
-  if (ensureKnownAdmins()) {
+  const instancesChanged = ensureInstances();
+  const adminsChanged = ensureKnownAdmins();
+  if (instancesChanged || adminsChanged) {
     try {
       await invoke("save_config", { config: currentConfig });
     } catch (_) {}
   }
   applyAppearance();
+  await refreshInstalledVersions();
   renderSavedAccounts();
   showScreen("login");
   document.addEventListener("click", (e) => {
@@ -356,7 +459,7 @@ async function addAccount(account) {
   await invoke("save_config", { config: currentConfig });
 }
 
-function enterMain() {
+async function enterMain() {
   ensureKnownAdmins();
   if (currentAccount?.name?.toLowerCase() === "emanueel") {
     currentAccount.role = "admin";
@@ -368,6 +471,7 @@ function enterMain() {
   setMainView("home");
   updateAvatar();
   updateAdminUI();
+  await refreshInstalledVersions();
   renderInstances();
   renderAccountPanel();
   applyAppearance();
@@ -389,7 +493,9 @@ function updateAdminUI() {
 function updateAvatar() {
   const btn = document.getElementById("avatar-btn");
   const initials = (currentAccount?.name || "SC").slice(0, 2).toUpperCase();
-  document.getElementById("avatar-initials").textContent = initials;
+  const initialsEl = document.getElementById("avatar-initials");
+  if (initialsEl) initialsEl.textContent = initials;
+  if (!btn) return;
   const skin = getAccountSkinUrl(currentAccount);
   if (skin) {
     btn.classList.add("has-skin");
@@ -409,119 +515,235 @@ function getAccountSkinUrl(acc) {
   return "";
 }
 
-function defaultSteveSkin() {
-  return "https://mc-heads.net/skin/Steve";
+const STEVE_SKIN_URL = "vendor/steve.png";
+
+let skinViewer = null;
+let activeWardrobeSkinId = null;
+let activeWardrobeSkinData = "";
+
+function ensureSavedSkins() {
+  if (!currentConfig.saved_skins) currentConfig.saved_skins = [];
 }
 
-function defaultSkinBody(name) {
-  return `https://mc-heads.net/body/${encodeURIComponent(name || "Steve")}/180`;
+function getSkinViewerLib() {
+  return window.skinview3d || null;
 }
 
-function defaultSkinHead(name) {
-  return `https://mc-heads.net/avatar/${encodeURIComponent(name || "Steve")}/72`;
+function destroySkinViewer() {
+  if (skinViewer) {
+    try {
+      skinViewer.dispose?.();
+    } catch (_) {}
+    skinViewer = null;
+  }
+}
+
+async function initSkinViewer(skinUrl) {
+  const canvas = document.getElementById("skin-canvas");
+  const fallback = document.getElementById("skin-fallback");
+  if (!canvas) return;
+
+  const lib = getSkinViewerLib();
+  if (!lib || !lib.SkinViewer) {
+    // Wait briefly for deferred script
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  const lib2 = getSkinViewerLib();
+  if (!lib2 || !lib2.SkinViewer) {
+    if (fallback) {
+      fallback.hidden = false;
+      fallback.innerHTML = "<p>No se pudo cargar el visor 3D.</p>";
+    }
+    return;
+  }
+  if (fallback) fallback.hidden = true;
+
+  const url = skinUrl || STEVE_SKIN_URL;
+  try {
+    if (!skinViewer) {
+      skinViewer = new lib2.SkinViewer({
+        canvas,
+        width: 320,
+        height: 420,
+        skin: url,
+      });
+      try {
+        skinViewer.background = 0x00000000;
+      } catch (_) {}
+      if (skinViewer.controls) {
+        skinViewer.controls.enableZoom = true;
+        skinViewer.controls.enableRotate = true;
+        skinViewer.controls.enablePan = false;
+      }
+      try {
+        if (lib2.WalkingAnimation) {
+          skinViewer.animation = new lib2.WalkingAnimation();
+          skinViewer.animation.speed = 0.55;
+        }
+      } catch (_) {}
+    } else {
+      await skinViewer.loadSkin(url);
+    }
+    activeWardrobeSkinData = url;
+  } catch (e) {
+    console.error("skinview error", e);
+    if (fallback) {
+      fallback.hidden = false;
+      fallback.innerHTML = "<p>Error al cargar la skin. Usa un PNG 64×64 válido.</p>";
+    }
+  }
+}
+
+function renderSavedSkinsGrid() {
+  ensureSavedSkins();
+  const grid = document.getElementById("saved-skins-grid");
+  if (!grid) return;
+
+  const addBtn = `<button type="button" class="skin-add-tile" id="btn-add-skin" title="Agregar skin" onclick="document.getElementById('skin-file').click()">
+    <span class="skin-add-plus">+</span>
+  </button>`;
+
+  const tiles = (currentConfig.saved_skins || [])
+    .map((s) => {
+      const active = s.id === activeWardrobeSkinId ? "active" : "";
+      return `<button type="button" class="skin-tile ${active}" data-id="${escapeAttr(s.id)}" onclick="selectSavedSkin('${escapeAttr(s.id)}')">
+        <img src="${s.data}" alt="${escapeHtml(s.name)}" />
+        <span class="skin-tile-del" onclick="event.stopPropagation(); deleteSavedSkin('${escapeAttr(s.id)}')">×</span>
+      </button>`;
+    })
+    .join("");
+
+  grid.innerHTML = tiles + addBtn;
 }
 
 function renderSkinsView() {
+  const nameEl = document.getElementById("skin-preview-name");
+  const status = document.getElementById("skin-status");
   if (!currentAccount) {
-    document.getElementById("skin-status").textContent = "Inicia sesión para gestionar skins.";
+    if (nameEl) nameEl.textContent = "Sin sesión";
+    if (status) status.textContent = "Inicia sesión para gestionar skins.";
+    destroySkinViewer();
     return;
   }
-  document.getElementById("skin-preview-name").textContent = currentAccount.name;
-  const select = document.getElementById("skin-select");
-  const custom = currentAccount.skin || "";
-  select.innerHTML = `
-    <option value="default">Skin por defecto</option>
-    ${currentAccount.type === "premium" ? `<option value="premium">Skin de Minecraft (online)</option>` : ""}
-    ${custom ? `<option value="custom">Skin personalizada</option>` : ""}
-  `;
-  if (custom) select.value = "custom";
-  else if (currentAccount.type === "premium") select.value = "premium";
-  else select.value = "default";
-  updateSkinPreview();
-  document.getElementById("skin-status").textContent = "";
-}
 
-function updateSkinPreview() {
-  const mode = document.getElementById("skin-select").value;
-  const name = currentAccount?.name || "Steve";
-  const body = document.getElementById("skin-preview-body");
-  const head = document.getElementById("skin-preview-head");
+  ensureSavedSkins();
+  if (nameEl) nameEl.textContent = currentAccount.name;
+  if (status) status.textContent = "";
 
-  if (mode === "custom" && currentAccount?.skin) {
-    // Custom PNG: use as head crop approximation via full skin URL services won't work for data URLs
-    head.src = currentAccount.skin;
-    body.src = currentAccount.skin;
-    body.style.objectFit = "cover";
-  } else if (mode === "premium") {
-    body.src = defaultSkinBody(name);
-    head.src = defaultSkinHead(name);
-    body.style.objectFit = "contain";
+  if (currentAccount.skin) {
+    activeWardrobeSkinData = currentAccount.skin;
+    const match = (currentConfig.saved_skins || []).find((s) => s.data === currentAccount.skin);
+    activeWardrobeSkinId = match ? match.id : null;
+  } else if ((currentConfig.saved_skins || []).length) {
+    activeWardrobeSkinId = currentConfig.saved_skins[0].id;
+    activeWardrobeSkinData = currentConfig.saved_skins[0].data;
   } else {
-    body.src = defaultSkinBody("Steve");
-    head.src = defaultSkinHead("Steve");
-    body.style.objectFit = "contain";
+    activeWardrobeSkinId = null;
+    activeWardrobeSkinData = STEVE_SKIN_URL;
   }
+
+  renderSavedSkinsGrid();
+  requestAnimationFrame(() => initSkinViewer(activeWardrobeSkinData));
 }
 
-function onSkinSelectChange() {
-  updateSkinPreview();
+async function selectSavedSkin(id) {
+  ensureSavedSkins();
+  const skin = (currentConfig.saved_skins || []).find((s) => s.id === id);
+  if (!skin) return;
+  activeWardrobeSkinId = id;
+  activeWardrobeSkinData = skin.data;
+  renderSavedSkinsGrid();
+  await initSkinViewer(skin.data);
+  const st = document.getElementById("skin-status");
+  if (st) st.textContent = `Vista: ${skin.name}`;
+}
+
+async function deleteSavedSkin(id) {
+  ensureSavedSkins();
+  currentConfig.saved_skins = currentConfig.saved_skins.filter((s) => s.id !== id);
+  if (activeWardrobeSkinId === id) {
+    activeWardrobeSkinId = null;
+    activeWardrobeSkinData = currentAccount?.skin || STEVE_SKIN_URL;
+    await initSkinViewer(activeWardrobeSkinData);
+  }
+  await invoke("save_config", { config: currentConfig });
+  renderSavedSkinsGrid();
 }
 
 async function onSkinUpload(event) {
   const file = event.target.files && event.target.files[0];
+  if (event.target) event.target.value = "";
   if (!file) return;
-  if (!file.type.includes("png")) {
-    alert("La skin debe ser un archivo PNG");
+  if (!file.type.includes("png") && !file.name.toLowerCase().endsWith(".png")) {
+    alert("La skin debe ser un archivo PNG (64×64 o 64×32)");
     return;
   }
-  if (file.size > 512 * 1024) {
-    alert("La skin debe pesar menos de 512 KB");
+  if (file.size > 1024 * 1024) {
+    alert("La skin debe pesar menos de 1 MB");
     return;
   }
+
   const reader = new FileReader();
   reader.onload = async () => {
     const data = String(reader.result || "");
-    if (!currentAccount) return;
-    currentAccount.skin = data;
-    const stored = (currentConfig.accounts || []).find((a) => a.name === currentAccount.name);
-    if (stored) stored.skin = data;
+    const ok = await validateSkinPng(data);
+    if (!ok) {
+      alert("PNG inválido. Usa una skin de Minecraft 64×64 (o 64×32 legacy).");
+      return;
+    }
+
+    ensureSavedSkins();
+    const entry = {
+      id: "skin-" + Date.now(),
+      name: file.name.replace(/\.png$/i, "") || "Skin",
+      data,
+      created_at: Date.now(),
+    };
+    currentConfig.saved_skins.unshift(entry);
+    activeWardrobeSkinId = entry.id;
+    activeWardrobeSkinData = data;
     await invoke("save_config", { config: currentConfig });
-    renderSkinsView();
-    updateAvatar();
-    document.getElementById("skin-status").textContent = "Skin subida. Pulsa Aplicar para confirmar la vista.";
-    document.getElementById("skin-select").value = "custom";
-    updateSkinPreview();
+    renderSavedSkinsGrid();
+    await initSkinViewer(data);
+    const st = document.getElementById("skin-status");
+    if (st) st.textContent = "Skin agregada al guardarropa.";
   };
   reader.readAsDataURL(file);
 }
 
-async function applySelectedSkin() {
-  if (!currentAccount) return;
-  const mode = document.getElementById("skin-select").value;
-  if (mode === "default") {
-    currentAccount.skin = "";
-  } else if (mode === "premium") {
-    currentAccount.skin = defaultSkinHead(currentAccount.name);
-  }
-  // custom keeps currentAccount.skin
-  const stored = (currentConfig.accounts || []).find((a) => a.name === currentAccount.name);
-  if (stored) stored.skin = currentAccount.skin || "";
-  await invoke("save_config", { config: currentConfig });
-  updateAvatar();
-  updateSkinPreview();
-  document.getElementById("skin-status").textContent = "Skin aplicada.";
+function validateSkinPng(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      resolve((w === 64 && (h === 64 || h === 32)) || (w === 128 && h === 128));
+    };
+    img.onerror = () => resolve(false);
+    img.src = dataUrl;
+  });
 }
 
-async function resetDefaultSkin() {
+async function applyActiveWardrobeSkin() {
   if (!currentAccount) return;
-  currentAccount.skin = "";
+  const data = activeWardrobeSkinData;
+  const isSteve = !data || data === STEVE_SKIN_URL;
+  currentAccount.skin = isSteve ? "" : data;
   const stored = (currentConfig.accounts || []).find((a) => a.name === currentAccount.name);
-  if (stored) stored.skin = "";
+  if (stored) stored.skin = currentAccount.skin;
   await invoke("save_config", { config: currentConfig });
-  document.getElementById("skin-file").value = "";
-  renderSkinsView();
   updateAvatar();
-  document.getElementById("skin-status").textContent = "Skin restablecida.";
+  const st = document.getElementById("skin-status");
+  if (st) st.textContent = "Skin aplicada a tu cuenta.";
+}
+
+async function useDefaultSteveSkin() {
+  activeWardrobeSkinId = null;
+  activeWardrobeSkinData = STEVE_SKIN_URL;
+  renderSavedSkinsGrid();
+  await initSkinViewer(STEVE_SKIN_URL);
+  const st = document.getElementById("skin-status");
+  if (st) st.textContent = "Vista: Steve (por defecto).";
 }
 
 function accountTypeLabel(acc) {
@@ -633,12 +855,49 @@ function loaderLabel(inst) {
   return inst.loader_version ? `${base} ${inst.loader_version}` : base;
 }
 
+function instanceMetaLine(inst) {
+  const map = { vanilla: "VANILLA", fabric: "FABRIC", forge: "FORGE", neoforge: "NEOFORGE" };
+  const loader = inst.loader || (inst.use_fabric ? "fabric" : "vanilla");
+  const premium = currentAccount && currentAccount.type === "premium" ? "PREMIUM" : "NO PREMIUM";
+  return `${map[loader] || String(loader).toUpperCase()} / ${inst.version} / ${premium}`;
+}
+
+function fabricVersionId(inst) {
+  const ver = inst.loader_version || recommendedFabricLoader(inst.version);
+  return `fabric-loader-${ver}-${inst.version}`;
+}
+
+function isInstanceInstalled(inst) {
+  if (!installedVersions.length) return false;
+  const ids = new Set(installedVersions.map((v) => v.id));
+  if (ids.has(inst.version)) return true;
+  if ((inst.loader === "fabric" || inst.use_fabric) && ids.has(fabricVersionId(inst))) return true;
+  return false;
+}
+
+async function refreshInstalledVersions() {
+  try {
+    installedVersions = await invoke("get_installed_versions");
+  } catch (_) {
+    installedVersions = [];
+  }
+}
+
+function updateInstancesCount(total, installed) {
+  const el = document.getElementById("instances-count");
+  if (!el) return;
+  const n = total ?? (currentConfig?.instances || []).length;
+  const inst = installed ?? (currentConfig?.instances || []).filter(isInstanceInstalled).length;
+  el.textContent = `${n} instancia${n === 1 ? "" : "s"} / ${inst} instalada${inst === 1 ? "" : "s"}`;
+}
+
 function renderInstances() {
   ensureInstances();
   updateAdminUI();
   const grid = document.getElementById("instances-grid");
   const q = (document.getElementById("instance-search").value || "").trim().toLowerCase();
   let list = [...(currentConfig.instances || [])];
+  const totalAll = list.length;
 
   if (instanceFilter === "whitelist") list = list.filter((i) => i.whitelist);
   if (instanceFilter === "no-whitelist") list = list.filter((i) => !i.whitelist);
@@ -647,9 +906,15 @@ function renderInstances() {
       (i) =>
         i.name.toLowerCase().includes(q) ||
         i.version.includes(q) ||
-        (i.description || "").toLowerCase().includes(q)
+        (i.description || "").toLowerCase().includes(q) ||
+        (i.loader || "").toLowerCase().includes(q)
     );
   }
+
+  updateInstancesCount(
+    totalAll,
+    (currentConfig.instances || []).filter(isInstanceInstalled).length
+  );
 
   if (!list.length) {
     grid.innerHTML = `<p class="empty-state">No hay instancias que coincidan.</p>`;
@@ -666,14 +931,20 @@ function renderInstances() {
         ? `style="background-image:url('${inst.image.replace(/'/g, "%27")}')"`
         : "";
       const coverClass = inst.image ? "custom" : cover;
+      const installed = isInstanceInstalled(inst);
+      const studio = (inst.description || "SoulClient").toUpperCase();
 
       return `
         <article class="instance-card" style="animation-delay:${delay}ms" data-id="${escapeAttr(inst.id)}">
-          <div class="instance-cover ${escapeAttr(coverClass)}" ${customImg}></div>
+          <div class="instance-cover ${escapeAttr(coverClass)}" ${customImg}>
+            ${installed ? `<span class="instance-badge">Instalado</span>` : ""}
+            <div class="instance-cover-fade">
+              <p class="instance-studio">${escapeHtml(studio.slice(0, 42))}</p>
+              <h3 class="instance-title">${escapeHtml(inst.name)}</h3>
+              <p class="instance-meta">${escapeHtml(instanceMetaLine(inst))}</p>
+            </div>
+          </div>
           <div class="instance-body">
-            <h3 class="instance-title">${escapeHtml(inst.name)}</h3>
-            <p class="instance-meta">${escapeHtml(inst.version)} · ${escapeHtml(loaderLabel(inst))}</p>
-            <p class="instance-desc">${escapeHtml(inst.description || " ")}</p>
             <span class="instance-tag ${inst.whitelist ? "visible" : ""}">${inst.whitelist ? "Whitelist" : ""}</span>
             <div class="instance-actions">
               <button class="btn-play" type="button" ${playingInstanceId ? "disabled" : ""} onclick="playInstance('${escapeAttr(inst.id)}')">
@@ -750,7 +1021,11 @@ async function playInstance(id) {
 
   try {
     const useFabric = inst.loader === "fabric";
-    const fabricVer = inst.loader_version || currentConfig.fabric_loader_version || "0.16.14";
+    const fabricVer =
+      inst.loader_version ||
+      recommendedFabricLoader(inst.version) ||
+      currentConfig.fabric_loader_version ||
+      "0.16.14";
     currentConfig.minecraft_version = inst.version;
     currentConfig.use_fabric = useFabric;
     if (useFabric) currentConfig.fabric_loader_version = fabricVer;
@@ -774,6 +1049,7 @@ async function playInstance(id) {
     });
     log(`Juego iniciado (PID: ${pid})`);
     document.getElementById("progress-text").textContent = "Minecraft en ejecución";
+    await refreshInstalledVersions();
 
     if (currentConfig.close_on_launch) {
       try {
@@ -796,6 +1072,7 @@ function onLoaderChange() {
   const field = document.getElementById("loader-version-field");
   const label = document.getElementById("loader-version-label");
   const select = document.getElementById("new-inst-loader-version");
+  const mcVersion = document.getElementById("new-inst-version").value;
 
   if (loader === "vanilla") {
     field.hidden = true;
@@ -806,8 +1083,26 @@ function onLoaderChange() {
   field.hidden = false;
   const names = { fabric: "Fabric Loader", forge: "Forge", neoforge: "NeoForge" };
   label.textContent = `Versión ${names[loader] || loader}`;
-  const versions = LOADER_VERSIONS[loader] || [];
+
+  let versions = LOADER_VERSIONS[loader] || [];
+  let preferred = versions[0] || "";
+  if (loader === "fabric") {
+    versions = fabricLoadersForMc(mcVersion);
+    preferred = recommendedFabricLoader(mcVersion);
+  }
+
   select.innerHTML = versions.map((v) => `<option value="${v}">${v}</option>`).join("");
+  if (preferred && [...select.options].some((o) => o.value === preferred)) {
+    select.value = preferred;
+  }
+}
+
+/** Keep Fabric Loader compatible when Minecraft version changes (1.18 / 1.19). */
+function onMcVersionChange() {
+  const loader = document.getElementById("new-inst-loader").value;
+  if (loader === "fabric") {
+    onLoaderChange();
+  }
 }
 
 function onInstanceImagePick(event) {
@@ -851,6 +1146,7 @@ function openAddInstance() {
   document.getElementById("new-inst-whitelist").checked = false;
   clearInstanceImage();
   onLoaderChange();
+  onMcVersionChange();
   document.getElementById("modal-overlay").hidden = false;
 }
 
@@ -874,8 +1170,11 @@ async function createInstance() {
   const description = document.getElementById("new-inst-desc").value.trim();
   const version = document.getElementById("new-inst-version").value;
   const loader = document.getElementById("new-inst-loader").value;
-  const loaderVersion =
+  let loaderVersion =
     loader === "vanilla" ? "" : document.getElementById("new-inst-loader-version").value;
+  if (loader === "fabric" && !loaderVersion) {
+    loaderVersion = recommendedFabricLoader(version);
+  }
   const whitelist = document.getElementById("new-inst-whitelist").checked;
   const cover =
     loader === "vanilla" ? "vanilla" : loader === "fabric" ? "fabric" : "modded";
