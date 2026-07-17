@@ -1,0 +1,454 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bg-dark: #0d1117;
+    --bg-medium: #161b22;
+    --bg-light: #1c2333;
+    --bg-card: #1a1f2e;
+    --accent: #e94560;
+    --accent-hover: #c81e45;
+    --accent-glow: rgba(233, 69, 96, 0.3);
+    --green: #2ea043;
+    --green-hover: #238636;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-muted: #484f58;
+    --border: #30363d;
+    --input-bg: #0d1117;
+    --danger: #f85149;
+}
+
+body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-dark);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    user-select: none;
+}
+
+.screen {
+    display: none;
+    height: 100vh;
+    width: 100vw;
+}
+.screen.active {
+    display: flex;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
+}
+
+.logo-section {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.logo-text {
+    font-size: 38px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    color: var(--text);
+}
+.logo-text .accent {
+    color: var(--accent);
+}
+
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-top: 6px;
+}
+
+.screen-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text);
+}
+
+.step {
+    color: var(--text);
+    font-size: 13px;
+    margin-top: 14px;
+    margin-bottom: 4px;
+}
+
+.hint {
+    color: var(--text-secondary);
+    font-size: 11px;
+    margin-bottom: 6px;
+}
+
+.auth-link {
+    display: block;
+    color: #58a6ff;
+    font-size: 11px;
+    word-break: break-all;
+    text-decoration: none;
+    padding: 10px;
+    background: var(--bg-medium);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    margin-bottom: 4px;
+    transition: background 0.2s;
+}
+.auth-link:hover {
+    background: var(--bg-light);
+}
+
+.input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.input::placeholder {
+    color: var(--text-muted);
+}
+
+.input.small {
+    width: 100px;
+}
+
+.label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.select {
+    padding: 8px 12px;
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    padding: 4px 0;
+}
+.checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 11px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: white;
+}
+.btn-primary:hover {
+    background: var(--accent-hover);
+    box-shadow: 0 4px 16px var(--accent-glow);
+}
+
+.btn-secondary {
+    background: var(--bg-light);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+.btn-secondary:hover {
+    background: var(--bg-card);
+    border-color: var(--text-muted);
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    padding: 8px 16px;
+}
+.btn-ghost:hover {
+    color: var(--text);
+}
+
+.btn-play {
+    background: var(--green);
+    color: white;
+    font-size: 18px;
+    font-weight: 800;
+    padding: 14px 40px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+    width: auto;
+    display: block;
+    margin: 0 auto;
+}
+.btn-play:hover {
+    background: var(--green-hover);
+    box-shadow: 0 4px 20px rgba(46, 160, 67, 0.4);
+    transform: translateY(-1px);
+}
+.btn-play:disabled {
+    background: #21262d;
+    color: var(--text-muted);
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.btn-row {
+    display: flex;
+    gap: 10px;
+}
+.btn-row .btn {
+    flex: 1;
+}
+
+/* Account items */
+.account-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.account-item:hover {
+    border-color: var(--accent);
+    background: var(--bg-light);
+}
+
+.account-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.account-badge.premium {
+    background: #238636;
+    color: white;
+}
+.account-badge.offline {
+    background: #1f6feb;
+    color: white;
+}
+
+.account-name {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.account-delete {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+.account-delete:hover {
+    color: var(--danger);
+    background: rgba(248, 81, 73, 0.1);
+}
+
+.error-text {
+    color: var(--danger);
+    font-size: 12px;
+    margin-top: 6px;
+    min-height: 16px;
+}
+
+/* Main screen */
+.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: var(--bg-medium);
+    border-bottom: 1px solid var(--border);
+    height: 52px;
+}
+
+.account-info {
+    font-size: 13px;
+    color: var(--text);
+}
+.account-info .type-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.top-bar-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+.btn-link:hover {
+    color: var(--text);
+    background: var(--bg-light);
+}
+.btn-link.danger:hover {
+    color: var(--danger);
+}
+
+.main-content {
+    padding: 20px;
+    height: calc(100vh - 52px);
+    display: flex;
+    flex-direction: column;
+}
+
+.version-selector {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.game-info {
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-bottom: 12px;
+}
+
+.progress-section {
+    margin-bottom: 14px;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 6px;
+    background: var(--bg-light);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), #ff6b6b);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 6px;
+}
+
+.bottom-actions {
+    margin-top: 8px;
+    text-align: right;
+}
+
+.log-area {
+    flex: 1;
+    margin-top: 10px;
+    padding: 12px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 11px;
+    color: #8b949e;
+    overflow-y: auto;
+    min-height: 100px;
+    line-height: 1.5;
+}
+.log-area::-webkit-scrollbar {
+    width: 6px;
+}
+.log-area::-webkit-scrollbar-track {
+    background: transparent;
+}
+.log-area::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+/* Settings */
+.settings-container {
+    max-width: 480px;
+}
+
+.setting-group {
+    margin-bottom: 14px;
+}
+
+.setting-row {
+    display: flex;
+    gap: 16px;
+}
+.setting-row .setting-group {
+    flex: 1;
+}

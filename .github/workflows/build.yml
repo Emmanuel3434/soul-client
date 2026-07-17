@@ -1,0 +1,41 @@
+name: Build SoulClient
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Build SoulClient
+        run: npx tauri build
+
+      - name: Upload .exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: SoulClient-windows
+          path: src-tauri/target/release/SoulClient.exe
+          if-no-files-found: error

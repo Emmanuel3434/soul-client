@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoulClient</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Login Screen -->
+        <div id="screen-login" class="screen active">
+            <div class="login-container">
+                <div class="logo-section">
+                    <h1 class="logo-text">Soul<span class="accent">Client</span></h1>
+                    <p class="subtitle">Minecraft 1.21.1 &bull; Fabric Loader 0.18</p>
+                </div>
+
+                <div id="saved-accounts"></div>
+
+                <button class="btn btn-primary" onclick="showPremiumLogin()">
+                    Iniciar sesion con Microsoft
+                </button>
+                <button class="btn btn-secondary" onclick="showOfflineLogin()">
+                    Jugar sin cuenta (Offline)
+                </button>
+                <button class="btn btn-ghost" onclick="showSettings()">
+                    Configuracion
+                </button>
+            </div>
+        </div>
+
+        <!-- Premium Login Screen -->
+        <div id="screen-premium" class="screen">
+            <div class="login-container">
+                <h2 class="screen-title">Iniciar sesion con Microsoft</h2>
+
+                <div class="step">1. Abre el siguiente enlace en tu navegador:</div>
+                <a id="ms-auth-link" class="auth-link" href="#" target="_blank"></a>
+
+                <div class="step">2. Autoriza y copia el codigo de la URL de redireccion:</div>
+                <p class="hint">(El codigo esta entre 'code=' y '&amp;session' en la URL)</p>
+
+                <div class="step">3. Pega el codigo aqui:</div>
+                <input type="text" id="auth-code-input" class="input" placeholder="Pega el codigo de autorizacion...">
+                <div id="auth-error" class="error-text"></div>
+
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="doMicrosoftLogin()">Conectar</button>
+                    <button class="btn btn-ghost" onclick="showScreen('login')">Volver</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Offline Login Screen -->
+        <div id="screen-offline" class="screen">
+            <div class="login-container">
+                <h2 class="screen-title">Modo Offline</h2>
+                <p class="hint">Ingresa tu nombre de usuario para jugar sin cuenta premium</p>
+
+                <input type="text" id="offline-name" class="input" placeholder="Nombre de usuario" value="Player">
+
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="doOfflineLogin()">Jugar</button>
+                    <button class="btn btn-ghost" onclick="showScreen('login')">Volver</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Screen -->
+        <div id="screen-main" class="screen">
+            <div class="top-bar">
+                <div class="account-info" id="account-display"></div>
+                <div class="top-bar-actions">
+                    <button class="btn-link" onclick="showSettings()">Config</button>
+                    <button class="btn-link danger" onclick="showScreen('login')">Cambiar cuenta</button>
+                </div>
+            </div>
+
+            <div class="main-content">
+                <div class="version-selector">
+                    <label class="label">Version:</label>
+                    <select id="version-select" class="select">
+                        <option value="1.21.1" selected>1.21.1</option>
+                        <option value="1.21">1.21</option>
+                        <option value="1.20.6">1.20.6</option>
+                        <option value="1.20.4">1.20.4</option>
+                        <option value="1.20.2">1.20.2</option>
+                        <option value="1.20.1">1.20.1</option>
+                        <option value="1.20">1.20</option>
+                        <option value="1.19.4">1.19.4</option>
+                        <option value="1.19.2">1.19.2</option>
+                        <option value="1.18.2">1.18.2</option>
+                        <option value="1.16.5">1.16.5</option>
+                        <option value="1.12.2">1.12.2</option>
+                    </select>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="fabric-check" checked>
+                        <span>Fabric Loader</span>
+                    </label>
+                </div>
+
+                <div class="game-info" id="game-info"></div>
+
+                <div class="progress-section" id="progress-section" style="display:none;">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progress-bar"></div>
+                    </div>
+                    <div class="progress-text" id="progress-text"></div>
+                </div>
+
+                <button class="btn btn-play" id="play-btn" onclick="startPlay()">
+                    JUGAR
+                </button>
+
+                <div class="bottom-actions">
+                    <button class="btn-link" onclick="openModsFolder()">Abrir carpeta mods</button>
+                </div>
+
+                <div class="log-area" id="log-area"></div>
+            </div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div id="screen-settings" class="screen">
+            <div class="login-container settings-container">
+                <h2 class="screen-title">Configuracion</h2>
+
+                <div class="setting-group">
+                    <label class="label">Ruta de Java:</label>
+                    <input type="text" id="set-java" class="input" value="java">
+                </div>
+                <div class="setting-group">
+                    <label class="label">Memoria (MB):</label>
+                    <input type="number" id="set-memory" class="input" value="2048" min="512" max="16384">
+                </div>
+                <div class="setting-row">
+                    <div class="setting-group">
+                        <label class="label">Ancho:</label>
+                        <input type="number" id="set-width" class="input small" value="854">
+                    </div>
+                    <div class="setting-group">
+                        <label class="label">Alto:</label>
+                        <input type="number" id="set-height" class="input small" value="480">
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <label class="label">Fabric Loader version:</label>
+                    <input type="text" id="set-fabric-ver" class="input" value="0.18.3">
+                </div>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="set-fullscreen">
+                    <span>Pantalla completa</span>
+                </label>
+
+                <div class="btn-row" style="margin-top:20px;">
+                    <button class="btn btn-primary" onclick="saveSettings()">Guardar</button>
+                    <button class="btn btn-ghost" onclick="goBackFromSettings()">Volver</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
