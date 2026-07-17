@@ -52,8 +52,9 @@ async fn get_microsoft_token(client: &Client, auth_code: &str) -> Result<String,
         .map_err(|e| format!("HTTP error: {}", e))?;
 
     if !resp.status().is_success() {
+        let status = resp.status();
         let body = resp.text().await.unwrap_or_default();
-        return Err(format!("Microsoft token error ({}): {}", resp.status(), body));
+        return Err(format!("Microsoft token error ({}): {}", status, body));
     }
 
     let body: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
@@ -174,7 +175,7 @@ pub fn login_offline(username: &str) -> Result<Account, String> {
     if username.len() < 3 || username.len() > 16 {
         return Err("Username must be between 3 and 16 characters".to_string());
     }
-    let offline_uuid = uuid::Uuid::new_v3(&uuid::Uuid::NAMESPACE_DNS, username);
+    let offline_uuid = uuid::Uuid::new_v3(&uuid::Uuid::NAMESPACE_DNS, username.as_bytes());
     Ok(Account {
         name: username.to_string(),
         id: offline_uuid.as_simple().to_string(),

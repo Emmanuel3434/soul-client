@@ -68,8 +68,8 @@ async fn download_game(
 }
 
 #[tauri::command]
-async fn get_download_progress(state: tauri::State<'_, AppState>) -> Vec<downloader::DownloadProgress> {
-    state.download_progress.lock().await.clone()
+async fn get_download_progress(state: tauri::State<'_, AppState>) -> Result<Vec<downloader::DownloadProgress>, String> {
+    Ok(state.download_progress.lock().await.clone())
 }
 
 #[tauri::command]
