@@ -14,9 +14,11 @@
     "windows": [
       {
         "title": "SoulClient",
-        "width": 850,
-        "height": 530,
-        "resizable": false,
+        "width": 1180,
+        "height": 720,
+        "minWidth": 900,
+        "minHeight": 580,
+        "resizable": true,
         "decorations": true,
         "transparent": false,
         "center": true

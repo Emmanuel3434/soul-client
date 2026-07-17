@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="SoulClient">
+  <!-- Droplet mark: white body with crescent cutout -->
+  <defs>
+    <mask id="crescent">
+      <rect width="128" height="128" fill="white"/>
+      <ellipse cx="82" cy="88" rx="28" ry="34" fill="black"/>
+    </mask>
+  </defs>
+  <path
+    fill="#FFFFFF"
+    mask="url(#crescent)"
+    d="M64 6
+       C48 34 26 54 26 80
+       C26 104 42.5 122 64 122
+       C85.5 122 102 104 102 80
+       C102 54 80 34 64 6Z"/>
+</svg>

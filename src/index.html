@@ -1,166 +1,232 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SoulClient</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SoulClient</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <div id="app">
-        <!-- Login Screen -->
-        <div id="screen-login" class="screen active">
-            <div class="login-container">
-                <div class="logo-section">
-                    <h1 class="logo-text">Soul<span class="accent">Client</span></h1>
-                    <p class="subtitle">Minecraft 1.21.1 &bull; Fabric Loader 0.18</p>
-                </div>
+  <div id="app">
+    <!-- LOGIN -->
+    <section id="screen-login" class="screen active" data-screen="login">
+      <div class="login-shell">
+        <div class="login-glow" aria-hidden="true"></div>
+        <div class="login-card fade-in">
+          <div class="brand-block">
+            <img class="brand-logo" src="logo.svg" alt="SoulClient" width="64" height="64" />
+            <h1 class="brand-title">SoulClient</h1>
+            <p class="brand-sub">Launcher moderno para Minecraft</p>
+          </div>
 
-                <div id="saved-accounts"></div>
+          <div id="saved-accounts" class="saved-accounts"></div>
 
-                <button class="btn btn-primary" onclick="showPremiumLogin()">
-                    Iniciar sesion con Microsoft
-                </button>
-                <button class="btn btn-secondary" onclick="showOfflineLogin()">
-                    Jugar sin cuenta (Offline)
-                </button>
-                <button class="btn btn-ghost" onclick="showSettings()">
-                    Configuracion
-                </button>
-            </div>
+          <div class="login-actions">
+            <button class="btn btn-ms" type="button" onclick="showPremiumLogin()">
+              <svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+              Iniciar sesión con Microsoft
+            </button>
+            <button class="btn btn-secondary" type="button" onclick="showOfflineLogin()">
+              Cuenta no premium (offline)
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PREMIUM -->
+    <section id="screen-premium" class="screen" data-screen="premium">
+      <div class="login-shell">
+        <div class="login-card fade-in">
+          <button class="back-link" type="button" onclick="showScreen('login')">← Volver</button>
+          <h2 class="panel-title">Cuenta premium</h2>
+          <p class="panel-hint">Autoriza tu cuenta Microsoft y pega el código de la URL de redirección.</p>
+
+          <ol class="auth-steps">
+            <li>
+              <span>Abre este enlace en el navegador</span>
+              <a id="ms-auth-link" class="auth-link" href="#" target="_blank" rel="noopener"></a>
+            </li>
+            <li>
+              <span>Copia el código entre <code>code=</code> y <code>&amp;session</code></span>
+            </li>
+            <li>
+              <span>Pégalo aquí</span>
+              <input id="auth-code-input" class="input" type="text" placeholder="Código de autorización" autocomplete="off" />
+            </li>
+          </ol>
+          <p id="auth-error" class="error-text" role="alert"></p>
+          <button class="btn btn-primary" type="button" onclick="doMicrosoftLogin()">Conectar cuenta</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- OFFLINE -->
+    <section id="screen-offline" class="screen" data-screen="offline">
+      <div class="login-shell">
+        <div class="login-card fade-in">
+          <button class="back-link" type="button" onclick="showScreen('login')">← Volver</button>
+          <h2 class="panel-title">Cuenta no premium</h2>
+          <p class="panel-hint">Elige un nombre único. No puede coincidir con ninguna cuenta ya registrada en SoulClient.</p>
+
+          <label class="field-label" for="offline-name">Nombre de usuario</label>
+          <input id="offline-name" class="input" type="text" maxlength="16" placeholder="Ej. SoulPlayer" autocomplete="off" oninput="checkOfflineName()" />
+          <p id="offline-error" class="error-text" role="alert"></p>
+
+          <button class="btn btn-primary" type="button" onclick="doOfflineLogin()">Continuar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAIN -->
+    <section id="screen-main" class="screen" data-screen="main">
+      <header class="topbar">
+        <div class="topbar-brand">
+          <img src="logo.svg" alt="" width="28" height="28" />
+          <span class="topbar-name">SoulClient</span>
+          <span class="version-chip">v1.0.0</span>
         </div>
 
-        <!-- Premium Login Screen -->
-        <div id="screen-premium" class="screen">
-            <div class="login-container">
-                <h2 class="screen-title">Iniciar sesion con Microsoft</h2>
+        <nav class="nav-pill" aria-label="Navegación principal">
+          <button class="nav-item active" data-view="home" type="button" title="Inicio" onclick="setMainView('home')">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z"/></svg>
+          </button>
+          <button class="nav-item" data-view="skins" type="button" title="Skins" onclick="setMainView('skins')">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16v3H4V7Zm2 3v10h4v-4h4v4h4V10"/></svg>
+          </button>
+          <button class="nav-item" data-view="settings" type="button" title="Ajustes" onclick="setMainView('settings')">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+          </button>
+          <button class="nav-item" data-view="account" type="button" title="Cuenta" onclick="setMainView('account')">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.8-3.5 5-5 8-5s6.2 1.5 8 5"/></svg>
+          </button>
+        </nav>
 
-                <div class="step">1. Abre el siguiente enlace en tu navegador:</div>
-                <a id="ms-auth-link" class="auth-link" href="#" target="_blank"></a>
+        <button class="avatar-btn" type="button" id="avatar-btn" title="Cuenta" onclick="setMainView('account')">
+          <span id="avatar-initials">SC</span>
+        </button>
+      </header>
 
-                <div class="step">2. Autoriza y copia el codigo de la URL de redireccion:</div>
-                <p class="hint">(El codigo esta entre 'code=' y '&amp;session' en la URL)</p>
-
-                <div class="step">3. Pega el codigo aqui:</div>
-                <input type="text" id="auth-code-input" class="input" placeholder="Pega el codigo de autorizacion...">
-                <div id="auth-error" class="error-text"></div>
-
-                <div class="btn-row">
-                    <button class="btn btn-primary" onclick="doMicrosoftLogin()">Conectar</button>
-                    <button class="btn btn-ghost" onclick="showScreen('login')">Volver</button>
-                </div>
+      <main class="main-body">
+        <!-- HOME / INSTANCES -->
+        <div id="view-home" class="view active">
+          <div class="section-head">
+            <h2 class="section-title">Instancias</h2>
+            <div class="section-tools">
+              <div class="search-wrap">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <input id="instance-search" class="search-input" type="search" placeholder="Buscar instancias..." oninput="renderInstances()" />
+              </div>
+              <button class="btn btn-ghost-sm" type="button" onclick="renderInstances()">Actualizar</button>
+              <button class="btn btn-accent-sm" type="button" onclick="openAddInstance()">+ Agregar instancia</button>
             </div>
+          </div>
+
+          <div class="filter-tabs" role="tablist">
+            <button class="filter-tab active" data-filter="all" type="button" onclick="setInstanceFilter('all')">Todas las instancias</button>
+            <button class="filter-tab" data-filter="whitelist" type="button" onclick="setInstanceFilter('whitelist')">En whitelist</button>
+            <button class="filter-tab" data-filter="no-whitelist" type="button" onclick="setInstanceFilter('no-whitelist')">Sin whitelist</button>
+          </div>
+
+          <div id="instances-grid" class="instances-grid"></div>
+
+          <div id="progress-section" class="progress-panel" hidden>
+            <div class="progress-bar-track"><div id="progress-bar" class="progress-bar-fill"></div></div>
+            <p id="progress-text" class="progress-text"></p>
+          </div>
+          <pre id="log-area" class="log-area" hidden></pre>
         </div>
 
-        <!-- Offline Login Screen -->
-        <div id="screen-offline" class="screen">
-            <div class="login-container">
-                <h2 class="screen-title">Modo Offline</h2>
-                <p class="hint">Ingresa tu nombre de usuario para jugar sin cuenta premium</p>
-
-                <input type="text" id="offline-name" class="input" placeholder="Nombre de usuario" value="Player">
-
-                <div class="btn-row">
-                    <button class="btn btn-primary" onclick="doOfflineLogin()">Jugar</button>
-                    <button class="btn btn-ghost" onclick="showScreen('login')">Volver</button>
-                </div>
-            </div>
+        <!-- SKINS -->
+        <div id="view-skins" class="view">
+          <h2 class="section-title">Skins</h2>
+          <p class="empty-state">Próximamente: gestión de skins desde SoulClient.</p>
         </div>
 
-        <!-- Main Screen -->
-        <div id="screen-main" class="screen">
-            <div class="top-bar">
-                <div class="account-info" id="account-display"></div>
-                <div class="top-bar-actions">
-                    <button class="btn-link" onclick="showSettings()">Config</button>
-                    <button class="btn-link danger" onclick="showScreen('login')">Cambiar cuenta</button>
-                </div>
-            </div>
-
-            <div class="main-content">
-                <div class="version-selector">
-                    <label class="label">Version:</label>
-                    <select id="version-select" class="select">
-                        <option value="1.21.1" selected>1.21.1</option>
-                        <option value="1.21">1.21</option>
-                        <option value="1.20.6">1.20.6</option>
-                        <option value="1.20.4">1.20.4</option>
-                        <option value="1.20.2">1.20.2</option>
-                        <option value="1.20.1">1.20.1</option>
-                        <option value="1.20">1.20</option>
-                        <option value="1.19.4">1.19.4</option>
-                        <option value="1.19.2">1.19.2</option>
-                        <option value="1.18.2">1.18.2</option>
-                        <option value="1.16.5">1.16.5</option>
-                        <option value="1.12.2">1.12.2</option>
-                    </select>
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="fabric-check" checked>
-                        <span>Fabric Loader</span>
-                    </label>
-                </div>
-
-                <div class="game-info" id="game-info"></div>
-
-                <div class="progress-section" id="progress-section" style="display:none;">
-                    <div class="progress-bar-container">
-                        <div class="progress-bar" id="progress-bar"></div>
-                    </div>
-                    <div class="progress-text" id="progress-text"></div>
-                </div>
-
-                <button class="btn btn-play" id="play-btn" onclick="startPlay()">
-                    JUGAR
-                </button>
-
-                <div class="bottom-actions">
-                    <button class="btn-link" onclick="openModsFolder()">Abrir carpeta mods</button>
-                </div>
-
-                <div class="log-area" id="log-area"></div>
-            </div>
+        <!-- SETTINGS -->
+        <div id="view-settings" class="view">
+          <h2 class="section-title">Ajustes</h2>
+          <div class="settings-grid">
+            <label class="field">
+              <span>Ruta de Java</span>
+              <input id="set-java" class="input" type="text" />
+            </label>
+            <label class="field">
+              <span>Memoria (MB)</span>
+              <input id="set-memory" class="input" type="number" min="512" max="16384" />
+            </label>
+            <label class="field">
+              <span>Ancho ventana</span>
+              <input id="set-width" class="input" type="number" />
+            </label>
+            <label class="field">
+              <span>Alto ventana</span>
+              <input id="set-height" class="input" type="number" />
+            </label>
+            <label class="field">
+              <span>Fabric Loader</span>
+              <input id="set-fabric-ver" class="input" type="text" />
+            </label>
+            <label class="check-row">
+              <input id="set-fullscreen" type="checkbox" />
+              <span>Pantalla completa</span>
+            </label>
+          </div>
+          <button class="btn btn-primary btn-inline" type="button" onclick="saveSettings()">Guardar ajustes</button>
         </div>
 
-        <!-- Settings Screen -->
-        <div id="screen-settings" class="screen">
-            <div class="login-container settings-container">
-                <h2 class="screen-title">Configuracion</h2>
-
-                <div class="setting-group">
-                    <label class="label">Ruta de Java:</label>
-                    <input type="text" id="set-java" class="input" value="java">
-                </div>
-                <div class="setting-group">
-                    <label class="label">Memoria (MB):</label>
-                    <input type="number" id="set-memory" class="input" value="2048" min="512" max="16384">
-                </div>
-                <div class="setting-row">
-                    <div class="setting-group">
-                        <label class="label">Ancho:</label>
-                        <input type="number" id="set-width" class="input small" value="854">
-                    </div>
-                    <div class="setting-group">
-                        <label class="label">Alto:</label>
-                        <input type="number" id="set-height" class="input small" value="480">
-                    </div>
-                </div>
-                <div class="setting-group">
-                    <label class="label">Fabric Loader version:</label>
-                    <input type="text" id="set-fabric-ver" class="input" value="0.18.3">
-                </div>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="set-fullscreen">
-                    <span>Pantalla completa</span>
-                </label>
-
-                <div class="btn-row" style="margin-top:20px;">
-                    <button class="btn btn-primary" onclick="saveSettings()">Guardar</button>
-                    <button class="btn btn-ghost" onclick="goBackFromSettings()">Volver</button>
-                </div>
-            </div>
+        <!-- ACCOUNT -->
+        <div id="view-account" class="view">
+          <h2 class="section-title">Cuenta</h2>
+          <div id="account-panel" class="account-panel"></div>
+          <div class="account-actions">
+            <button class="btn btn-secondary btn-inline" type="button" onclick="logoutToLogin()">Cambiar cuenta</button>
+          </div>
         </div>
+      </main>
+    </section>
+
+    <!-- ADD INSTANCE MODAL -->
+    <div id="modal-overlay" class="modal-overlay" hidden>
+      <div class="modal fade-in" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <h3 id="modal-title">Nueva instancia</h3>
+        <label class="field">
+          <span>Nombre</span>
+          <input id="new-inst-name" class="input" type="text" placeholder="Mi instancia" />
+        </label>
+        <label class="field">
+          <span>Versión</span>
+          <select id="new-inst-version" class="input">
+            <option value="1.21.1">1.21.1</option>
+            <option value="1.21">1.21</option>
+            <option value="1.20.6">1.20.6</option>
+            <option value="1.20.4">1.20.4</option>
+            <option value="1.20.1">1.20.1</option>
+            <option value="1.19.4">1.19.4</option>
+            <option value="1.18.2">1.18.2</option>
+            <option value="1.16.5">1.16.5</option>
+            <option value="1.12.2">1.12.2</option>
+          </select>
+        </label>
+        <label class="check-row">
+          <input id="new-inst-fabric" type="checkbox" checked />
+          <span>Usar Fabric</span>
+        </label>
+        <label class="check-row">
+          <input id="new-inst-whitelist" type="checkbox" />
+          <span>Marcar whitelist</span>
+        </label>
+        <div class="modal-actions">
+          <button class="btn btn-ghost-sm" type="button" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-primary btn-inline" type="button" onclick="createInstance()">Crear</button>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <script src="main.js"></script>
+  <script src="main.js"></script>
 </body>
 </html>

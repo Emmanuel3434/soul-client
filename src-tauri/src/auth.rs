@@ -171,9 +171,28 @@ async fn get_minecraft_profile(client: &Client, mc_token: &str) -> Result<(Strin
     Ok((id, name))
 }
 
-pub fn login_offline(username: &str) -> Result<Account, String> {
+pub fn is_username_taken(username: &str, accounts: &[Account]) -> bool {
+    let needle = username.trim().to_lowercase();
+    accounts
+        .iter()
+        .any(|a| a.name.trim().to_lowercase() == needle)
+}
+
+pub fn login_offline(username: &str, existing_accounts: &[Account]) -> Result<Account, String> {
+    let username = username.trim();
     if username.len() < 3 || username.len() > 16 {
-        return Err("Username must be between 3 and 16 characters".to_string());
+        return Err("El nombre debe tener entre 3 y 16 caracteres".to_string());
+    }
+    if !username
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_')
+    {
+        return Err("Solo letras, números y guion bajo".to_string());
+    }
+    if is_username_taken(username, existing_accounts) {
+        return Err(
+            "Ese nombre ya está en uso. Elige un nombre diferente.".to_string(),
+        );
     }
     let offline_uuid = uuid::Uuid::new_v3(&uuid::Uuid::NAMESPACE_DNS, username.as_bytes());
     Ok(Account {

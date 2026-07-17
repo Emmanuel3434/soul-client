@@ -36,8 +36,13 @@ async fn login_microsoft(auth_code: String) -> Result<Account, String> {
 }
 
 #[tauri::command]
-fn login_offline(username: String) -> Result<Account, String> {
-    auth::login_offline(&username)
+fn login_offline(username: String, existing_accounts: Vec<Account>) -> Result<Account, String> {
+    auth::login_offline(&username, &existing_accounts)
+}
+
+#[tauri::command]
+fn is_username_taken(username: String, existing_accounts: Vec<Account>) -> bool {
+    auth::is_username_taken(&username, &existing_accounts)
 }
 
 #[tauri::command]
@@ -141,6 +146,7 @@ pub fn run() {
             get_microsoft_auth_url,
             login_microsoft,
             login_offline,
+            is_username_taken,
             download_game,
             get_download_progress,
             launch_game,
