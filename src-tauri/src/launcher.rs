@@ -76,7 +76,7 @@ impl GameLauncher {
             return;
         }
         if let Ok(data) = fs::read_to_string(json_path) {
-            if let Ok(profile: serde_json::Value = serde_json::from_str(&data) {
+            if let Ok(profile) = serde_json::from_str::<serde_json::Value>(&data) {
                 if let Some(libs_val) = profile.get("libraries").and_then(|v| v.as_array()) {
                     for lib in libs_val {
                         if let Some(name) = lib.get("name").and_then(|v| v.as_str()) {
@@ -102,7 +102,7 @@ impl GameLauncher {
             let fabric_json = self.versions_dir().join(fab_id).join(format!("{}.json", fab_id));
             if fabric_json.exists() {
                 if let Ok(data) = fs::read_to_string(&fabric_json) {
-                    if let Ok(profile: serde_json::Value = serde_json::from_str(&data) {
+                    if let Ok(profile) = serde_json::from_str::<serde_json::Value>(&data) {
                         if let Some(mc) = profile.get("mainClass").and_then(|v| v.as_str()) {
                             return mc.to_string();
                         }
