@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SoulClient</title>
+  <link rel="icon" type="image/png" href="logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -17,13 +18,11 @@
         <div class="login-glow" aria-hidden="true"></div>
         <div class="login-card fade-in">
           <div class="brand-block">
-            <img class="brand-logo" src="logo.svg" alt="SoulClient" width="64" height="64" />
+            <img class="brand-logo" src="logo.svg" alt="SoulClient" width="72" height="72" />
             <h1 class="brand-title">SoulClient</h1>
             <p class="brand-sub">Launcher moderno para Minecraft</p>
           </div>
-
           <div id="saved-accounts" class="saved-accounts"></div>
-
           <div class="login-actions">
             <button class="btn btn-ms" type="button" onclick="showPremiumLogin()">
               <svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
@@ -44,15 +43,12 @@
           <button class="back-link" type="button" onclick="showScreen('login')">← Volver</button>
           <h2 class="panel-title">Cuenta premium</h2>
           <p class="panel-hint">Autoriza tu cuenta Microsoft y pega el código de la URL de redirección.</p>
-
           <ol class="auth-steps">
             <li>
               <span>Abre este enlace en el navegador</span>
               <a id="ms-auth-link" class="auth-link" href="#" target="_blank" rel="noopener"></a>
             </li>
-            <li>
-              <span>Copia el código entre <code>code=</code> y <code>&amp;session</code></span>
-            </li>
+            <li><span>Copia el código entre <code>code=</code> y <code>&amp;session</code></span></li>
             <li>
               <span>Pégalo aquí</span>
               <input id="auth-code-input" class="input" type="text" placeholder="Código de autorización" autocomplete="off" />
@@ -71,11 +67,9 @@
           <button class="back-link" type="button" onclick="showScreen('login')">← Volver</button>
           <h2 class="panel-title">Cuenta no premium</h2>
           <p class="panel-hint">Elige un nombre único. No puede coincidir con ninguna cuenta ya registrada en SoulClient.</p>
-
           <label class="field-label" for="offline-name">Nombre de usuario</label>
           <input id="offline-name" class="input" type="text" maxlength="16" placeholder="Ej. SoulPlayer" autocomplete="off" oninput="checkOfflineName()" />
           <p id="offline-error" class="error-text" role="alert"></p>
-
           <button class="btn btn-primary" type="button" onclick="doOfflineLogin()">Continuar</button>
         </div>
       </div>
@@ -85,7 +79,7 @@
     <section id="screen-main" class="screen" data-screen="main">
       <header class="topbar">
         <div class="topbar-brand">
-          <img src="logo.svg" alt="" width="28" height="28" />
+          <img src="logo.svg" alt="SoulClient" width="28" height="28" />
           <span class="topbar-name">SoulClient</span>
           <span class="version-chip">v1.0.0</span>
         </div>
@@ -111,7 +105,7 @@
       </header>
 
       <main class="main-body">
-        <!-- HOME / INSTANCES -->
+        <!-- HOME -->
         <div id="view-home" class="view active">
           <div class="section-head">
             <h2 class="section-title">Instancias</h2>
@@ -121,7 +115,7 @@
                 <input id="instance-search" class="search-input" type="search" placeholder="Buscar instancias..." oninput="renderInstances()" />
               </div>
               <button class="btn btn-ghost-sm" type="button" onclick="renderInstances()">Actualizar</button>
-              <button class="btn btn-accent-sm" type="button" onclick="openAddInstance()">+ Agregar instancia</button>
+              <button id="btn-add-instance" class="btn btn-accent-sm" type="button" onclick="openAddInstance()">+ Agregar instancia</button>
             </div>
           </div>
 
@@ -132,7 +126,6 @@
           </div>
 
           <div id="instances-grid" class="instances-grid"></div>
-
           <div id="progress-section" class="progress-panel" hidden>
             <div class="progress-bar-track"><div id="progress-bar" class="progress-bar-fill"></div></div>
             <p id="progress-text" class="progress-text"></p>
@@ -149,79 +142,232 @@
         <!-- SETTINGS -->
         <div id="view-settings" class="view">
           <h2 class="section-title">Ajustes</h2>
-          <div class="settings-grid">
-            <label class="field">
-              <span>Ruta de Java</span>
-              <input id="set-java" class="input" type="text" />
-            </label>
-            <label class="field">
-              <span>Memoria (MB)</span>
-              <input id="set-memory" class="input" type="number" min="512" max="16384" />
-            </label>
-            <label class="field">
-              <span>Ancho ventana</span>
-              <input id="set-width" class="input" type="number" />
-            </label>
-            <label class="field">
-              <span>Alto ventana</span>
-              <input id="set-height" class="input" type="number" />
-            </label>
-            <label class="field">
-              <span>Fabric Loader</span>
-              <input id="set-fabric-ver" class="input" type="text" />
-            </label>
-            <label class="check-row">
-              <input id="set-fullscreen" type="checkbox" />
-              <span>Pantalla completa</span>
-            </label>
+          <div class="settings-layout">
+            <aside class="settings-nav" role="tablist">
+              <button type="button" class="settings-nav-item active" data-settings="general" onclick="setSettingsTab('general')">General</button>
+              <button type="button" class="settings-nav-item" data-settings="minecraft" onclick="setSettingsTab('minecraft')">Minecraft</button>
+              <button type="button" class="settings-nav-item" data-settings="account" onclick="setSettingsTab('account')">Cuenta</button>
+              <button type="button" class="settings-nav-item" data-settings="appearance" onclick="setSettingsTab('appearance')">Apariencia</button>
+            </aside>
+
+            <div class="settings-content">
+              <!-- GENERAL -->
+              <div id="settings-general" class="settings-pane active">
+                <h3 class="settings-pane-title">General</h3>
+                <div class="settings-form">
+                  <label class="field">
+                    <span>Idioma</span>
+                    <select id="set-language" class="input">
+                      <option value="es">Español</option>
+                      <option value="en">English</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Tema</span>
+                    <select id="set-theme" class="input">
+                      <option value="dark">Oscuro</option>
+                      <option value="light">Claro</option>
+                    </select>
+                  </label>
+                  <label class="toggle-row">
+                    <div>
+                      <strong>Inicio automático</strong>
+                      <p>Abrir SoulClient al iniciar el sistema</p>
+                    </div>
+                    <input id="set-auto-start" type="checkbox" class="toggle" />
+                  </label>
+                  <label class="toggle-row">
+                    <div>
+                      <strong>Buscar actualizaciones</strong>
+                      <p>Comprobar actualizaciones automáticamente</p>
+                    </div>
+                    <input id="set-auto-update" type="checkbox" class="toggle" />
+                  </label>
+                  <label class="field">
+                    <span>Carpeta de instalación</span>
+                    <input id="set-install-dir" class="input" type="text" placeholder="Por defecto: ~/.soulclient" />
+                  </label>
+                  <label class="field">
+                    <span>Ruta de Java</span>
+                    <input id="set-java" class="input" type="text" placeholder="java" />
+                  </label>
+                </div>
+              </div>
+
+              <!-- MINECRAFT -->
+              <div id="settings-minecraft" class="settings-pane">
+                <h3 class="settings-pane-title">Minecraft</h3>
+                <div class="settings-form">
+                  <div class="field-row">
+                    <label class="field">
+                      <span>RAM mínima (MB)</span>
+                      <input id="set-memory-min" class="input" type="number" min="512" max="16384" />
+                    </label>
+                    <label class="field">
+                      <span>RAM máxima (MB)</span>
+                      <input id="set-memory" class="input" type="number" min="512" max="32768" />
+                    </label>
+                  </div>
+                  <label class="field">
+                    <span>Argumentos JVM</span>
+                    <input id="set-jvm-args" class="input" type="text" placeholder="-XX:+UseG1GC ..." />
+                  </label>
+                  <div class="field-row">
+                    <label class="field">
+                      <span>Ancho</span>
+                      <input id="set-width" class="input" type="number" />
+                    </label>
+                    <label class="field">
+                      <span>Alto</span>
+                      <input id="set-height" class="input" type="number" />
+                    </label>
+                  </div>
+                  <label class="toggle-row">
+                    <div>
+                      <strong>Pantalla completa</strong>
+                      <p>Iniciar Minecraft en pantalla completa</p>
+                    </div>
+                    <input id="set-fullscreen" type="checkbox" class="toggle" />
+                  </label>
+                  <label class="toggle-row">
+                    <div>
+                      <strong>Cerrar launcher al lanzar</strong>
+                      <p>Cerrar SoulClient cuando se inicie el juego</p>
+                    </div>
+                    <input id="set-close-on-launch" type="checkbox" class="toggle" />
+                  </label>
+                  <label class="field">
+                    <span>Selección de Java</span>
+                    <input id="set-java-mc" class="input" type="text" placeholder="Misma ruta que en General" />
+                  </label>
+                </div>
+              </div>
+
+              <!-- ACCOUNT -->
+              <div id="settings-account" class="settings-pane">
+                <h3 class="settings-pane-title">Cuenta</h3>
+                <div id="settings-account-info" class="account-panel"></div>
+                <div id="settings-accounts-list" class="accounts-manage"></div>
+                <div class="account-actions settings-account-actions">
+                  <button class="btn btn-secondary btn-inline" type="button" onclick="logoutToLogin()">Cambiar de cuenta</button>
+                  <button class="btn btn-danger-outline btn-inline" type="button" onclick="logoutToLogin()">Cerrar sesión</button>
+                </div>
+              </div>
+
+              <!-- APPEARANCE -->
+              <div id="settings-appearance" class="settings-pane">
+                <h3 class="settings-pane-title">Apariencia</h3>
+                <div class="settings-form">
+                  <label class="field">
+                    <span>Fondo del launcher</span>
+                    <select id="set-background" class="input">
+                      <option value="default">Por defecto</option>
+                      <option value="gradient">Gradiente suave</option>
+                      <option value="deep">Negro profundo</option>
+                    </select>
+                  </label>
+                  <label class="toggle-row">
+                    <div>
+                      <strong>Animaciones</strong>
+                      <p>Transiciones y efectos de movimiento</p>
+                    </div>
+                    <input id="set-animations" type="checkbox" class="toggle" />
+                  </label>
+                  <label class="toggle-row">
+                    <div>
+                      <strong>Transparencias</strong>
+                      <p>Efectos de glass / blur en paneles</p>
+                    </div>
+                    <input id="set-transparencies" type="checkbox" class="toggle" />
+                  </label>
+                  <label class="field">
+                    <span>Color de acento</span>
+                    <div class="color-row">
+                      <input id="set-accent" class="input color-input" type="color" value="#3dd68c" />
+                      <input id="set-accent-text" class="input" type="text" value="#3dd68c" />
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div class="settings-footer">
+                <button class="btn btn-primary btn-inline" type="button" onclick="saveSettings()">Guardar</button>
+              </div>
+            </div>
           </div>
-          <button class="btn btn-primary btn-inline" type="button" onclick="saveSettings()">Guardar ajustes</button>
         </div>
 
-        <!-- ACCOUNT -->
+        <!-- ACCOUNT VIEW -->
         <div id="view-account" class="view">
           <h2 class="section-title">Cuenta</h2>
           <div id="account-panel" class="account-panel"></div>
           <div class="account-actions">
+            <button class="btn btn-secondary btn-inline" type="button" onclick="setMainView('settings'); setSettingsTab('account')">Administrar cuentas</button>
             <button class="btn btn-secondary btn-inline" type="button" onclick="logoutToLogin()">Cambiar cuenta</button>
           </div>
         </div>
       </main>
     </section>
 
-    <!-- ADD INSTANCE MODAL -->
+    <!-- INSTANCE MODAL -->
     <div id="modal-overlay" class="modal-overlay" hidden>
-      <div class="modal fade-in" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal modal-lg fade-in" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <h3 id="modal-title">Nueva instancia</h3>
-        <label class="field">
-          <span>Nombre</span>
-          <input id="new-inst-name" class="input" type="text" placeholder="Mi instancia" />
-        </label>
-        <label class="field">
-          <span>Versión</span>
-          <select id="new-inst-version" class="input">
-            <option value="1.21.1">1.21.1</option>
-            <option value="1.21">1.21</option>
-            <option value="1.20.6">1.20.6</option>
-            <option value="1.20.4">1.20.4</option>
-            <option value="1.20.1">1.20.1</option>
-            <option value="1.19.4">1.19.4</option>
-            <option value="1.18.2">1.18.2</option>
-            <option value="1.16.5">1.16.5</option>
-            <option value="1.12.2">1.12.2</option>
-          </select>
-        </label>
-        <label class="check-row">
-          <input id="new-inst-fabric" type="checkbox" checked />
-          <span>Usar Fabric</span>
-        </label>
-        <label class="check-row">
-          <input id="new-inst-whitelist" type="checkbox" />
-          <span>Marcar whitelist</span>
-        </label>
+        <input type="hidden" id="edit-inst-id" value="" />
+
+        <div class="modal-grid">
+          <label class="field">
+            <span>Nombre</span>
+            <input id="new-inst-name" class="input" type="text" placeholder="Mi instancia" />
+          </label>
+          <label class="field">
+            <span>Versión de Minecraft</span>
+            <select id="new-inst-version" class="input">
+              <option value="1.21.1">1.21.1</option>
+              <option value="1.21">1.21</option>
+              <option value="1.20.6">1.20.6</option>
+              <option value="1.20.4">1.20.4</option>
+              <option value="1.20.1">1.20.1</option>
+              <option value="1.19.4">1.19.4</option>
+              <option value="1.18.2">1.18.2</option>
+              <option value="1.16.5">1.16.5</option>
+              <option value="1.12.2">1.12.2</option>
+            </select>
+          </label>
+          <label class="field field-span">
+            <span>Descripción</span>
+            <textarea id="new-inst-desc" class="input textarea" rows="2" placeholder="Descripción opcional"></textarea>
+          </label>
+          <label class="field">
+            <span>Tipo de instalación</span>
+            <select id="new-inst-loader" class="input" onchange="onLoaderChange()">
+              <option value="vanilla">Vanilla</option>
+              <option value="fabric" selected>Fabric</option>
+              <option value="neoforge">NeoForge</option>
+              <option value="forge">Forge</option>
+            </select>
+          </label>
+          <label class="field" id="loader-version-field">
+            <span id="loader-version-label">Versión Fabric Loader</span>
+            <select id="new-inst-loader-version" class="input"></select>
+          </label>
+          <label class="field field-span">
+            <span>Imagen personalizada (icono / banner)</span>
+            <div class="image-pick">
+              <input id="new-inst-image" type="file" accept="image/*" onchange="onInstanceImagePick(event)" />
+              <div id="new-inst-image-preview" class="image-preview" hidden></div>
+              <button type="button" class="btn btn-ghost-sm" onclick="clearInstanceImage()">Quitar imagen</button>
+            </div>
+          </label>
+          <label class="check-row field-span">
+            <input id="new-inst-whitelist" type="checkbox" />
+            <span>Marcar whitelist</span>
+          </label>
+        </div>
+
         <div class="modal-actions">
           <button class="btn btn-ghost-sm" type="button" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-primary btn-inline" type="button" onclick="createInstance()">Crear</button>
+          <button class="btn btn-primary btn-inline" type="button" id="modal-submit-btn" onclick="createInstance()">Crear</button>
         </div>
       </div>
     </div>

@@ -133,14 +133,21 @@ impl GameLauncher {
 
         let mut args = vec![
             format!("-Xmx{}M", config.memory_mb),
-            format!("-Xms{}M", std::cmp::min(config.memory_mb / 2, 512)),
+            format!("-Xms{}M", config.memory_min_mb.min(config.memory_mb)),
             format!("-Djava.library.path={}", natives_dir.to_string_lossy()),
             "-Dminecraft.launcher.brand=SoulClient".to_string(),
             "-Dminecraft.launcher.version=1.0".to_string(),
-            "-cp".to_string(),
-            classpath,
-            main_class,
         ];
+
+        if !config.jvm_args.trim().is_empty() {
+            for part in config.jvm_args.split_whitespace() {
+                args.push(part.to_string());
+            }
+        }
+
+        args.push("-cp".to_string());
+        args.push(classpath);
+        args.push(main_class);
 
         let game_args = vec![
             format!("--username={}", account.name),
