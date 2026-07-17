@@ -535,6 +535,8 @@ button, input, select {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 340px;
   transition: transform 0.25s var(--ease), border-color 0.25s, box-shadow 0.25s;
   animation: cardIn 0.45s var(--ease) both;
 }
@@ -587,17 +589,31 @@ button, input, select {
   flex-direction: column;
   gap: 6px;
   flex: 1;
+  min-height: 0;
 }
 
 .instance-title {
   font-size: 16px;
   font-weight: 700;
   letter-spacing: -0.02em;
+  min-height: 1.3em;
 }
 
 .instance-meta {
   font-size: 12px;
   color: var(--text-secondary);
+  min-height: 1.2em;
+}
+
+.instance-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  min-height: 2.8em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .instance-tag {
@@ -610,13 +626,19 @@ button, input, select {
   padding: 3px 8px;
   border-radius: 6px;
   margin-top: 2px;
+  min-height: 20px;
+  visibility: hidden;
+}
+.instance-tag.visible {
+  visibility: visible;
 }
 
 .instance-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: auto;
+  padding-top: 10px;
 }
 
 .btn-play {
@@ -628,12 +650,13 @@ button, input, select {
   padding: 10px 14px;
   border: none;
   border-radius: 10px;
-  background: var(--accent);
+  background: var(--accent, #3dd68c);
   color: #06110c;
   font-weight: 700;
   font-size: 13px;
   cursor: pointer;
   transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  min-height: 40px;
 }
 .btn-play:hover {
   background: var(--accent-hover);
@@ -1015,16 +1038,6 @@ button, input, select {
   flex-shrink: 0;
 }
 
-.instance-desc {
-  font-size: 12px;
-  color: var(--text-muted);
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
 .instance-cover.custom {
   background-size: cover !important;
   background-position: center !important;
@@ -1131,5 +1144,83 @@ html[data-theme="light"] .btn-ms {
   .modal-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Skins */
+.skins-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  align-items: start;
+  max-width: 860px;
+}
+.skin-preview-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 24px;
+  text-align: center;
+}
+.skin-stage {
+  position: relative;
+  width: 180px;
+  height: 260px;
+  margin: 0 auto 14px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), transparent),
+    var(--bg);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.skin-body {
+  width: 128px;
+  height: 256px;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+.skin-head {
+  position: absolute;
+  top: 18px;
+  width: 72px;
+  height: 72px;
+  image-rendering: pixelated;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+}
+.skin-name {
+  font-weight: 700;
+  font-size: 16px;
+}
+.skin-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px;
+}
+.skin-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.admin-only[hidden] {
+  display: none !important;
+}
+.avatar-btn.has-skin {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.avatar-btn.has-skin span {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .skins-layout { grid-template-columns: 1fr; }
 }
 

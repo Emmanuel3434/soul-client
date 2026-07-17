@@ -34,6 +34,7 @@ pub async fn login_with_microsoft(auth_code: &str) -> Result<Account, String> {
         account_type: "premium".to_string(),
         token: mc_token,
         role: "user".to_string(),
+        skin: String::new(),
     })
 }
 
@@ -202,5 +203,6 @@ pub fn login_offline(username: &str, existing_accounts: &[Account]) -> Result<Ac
         account_type: "offline".to_string(),
         token: "0".to_string(),
         role: "user".to_string(),
+        skin: String::new(),
     })
 }

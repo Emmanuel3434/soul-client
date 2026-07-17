@@ -12,6 +12,9 @@ pub struct Account {
     pub token: String,
     #[serde(default = "default_role")]
     pub role: String,
+    /// Base64 data URL or remote skin URL
+    #[serde(default)]
+    pub skin: String,
 }
 
 fn default_role() -> String {

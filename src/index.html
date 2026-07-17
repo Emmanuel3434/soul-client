@@ -89,7 +89,7 @@
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z"/></svg>
           </button>
           <button class="nav-item" data-view="skins" type="button" title="Skins" onclick="setMainView('skins')">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16v3H4V7Zm2 3v10h4v-4h4v4h4V10"/></svg>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v3H6V4zm1 3v13h3v-5h4v5h3V7"/></svg>
           </button>
           <button class="nav-item" data-view="settings" type="button" title="Ajustes" onclick="setMainView('settings')">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
@@ -115,7 +115,7 @@
                 <input id="instance-search" class="search-input" type="search" placeholder="Buscar instancias..." oninput="renderInstances()" />
               </div>
               <button class="btn btn-ghost-sm" type="button" onclick="renderInstances()">Actualizar</button>
-              <button id="btn-add-instance" class="btn btn-accent-sm" type="button" onclick="openAddInstance()">+ Agregar instancia</button>
+  <button id="btn-add-instance" class="btn btn-accent-sm admin-only" type="button" onclick="openAddInstance()" hidden>+ Agregar instancia</button>
             </div>
           </div>
 
@@ -136,7 +136,31 @@
         <!-- SKINS -->
         <div id="view-skins" class="view">
           <h2 class="section-title">Skins</h2>
-          <p class="empty-state">Próximamente: gestión de skins desde SoulClient.</p>
+          <p class="panel-hint" style="margin-bottom:18px">Personaliza la skin de tu cuenta en SoulClient.</p>
+          <div class="skins-layout">
+            <div class="skin-preview-card">
+              <div class="skin-stage">
+                <img id="skin-preview-body" class="skin-body" alt="Vista de skin" src="" />
+                <img id="skin-preview-head" class="skin-head" alt="Cabeza" src="" />
+              </div>
+              <p id="skin-preview-name" class="skin-name">—</p>
+            </div>
+            <div class="skin-controls">
+              <label class="field">
+                <span>Skin actual</span>
+                <select id="skin-select" class="input" onchange="onSkinSelectChange()"></select>
+              </label>
+              <label class="field">
+                <span>Subir skin (.png 64×64 o 64×32)</span>
+                <input id="skin-file" type="file" accept="image/png" onchange="onSkinUpload(event)" />
+              </label>
+              <div class="skin-actions">
+                <button class="btn btn-primary btn-inline" type="button" onclick="applySelectedSkin()">Aplicar skin</button>
+                <button class="btn btn-secondary btn-inline" type="button" onclick="resetDefaultSkin()">Restablecer</button>
+              </div>
+              <p id="skin-status" class="empty-state"></p>
+            </div>
+          </div>
         </div>
 
         <!-- SETTINGS -->

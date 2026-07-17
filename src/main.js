@@ -16,7 +16,23 @@ let pendingImageData = "";
 let editingInstanceId = null;
 
 function isAdmin() {
-  return currentAccount && currentAccount.role === "admin";
+  return currentAccount && String(currentAccount.role || "").toLowerCase() === "admin";
+}
+
+/** Always grant admin to Emanueel (local owner account). */
+function ensureKnownAdmins() {
+  if (!currentConfig?.accounts) return;
+  let changed = false;
+  currentConfig.accounts.forEach((a) => {
+    if (a.name && a.name.toLowerCase() === "emanueel" && a.role !== "admin") {
+      a.role = "admin";
+      changed = true;
+    }
+  });
+  if (currentAccount && currentAccount.name?.toLowerCase() === "emanueel") {
+    currentAccount.role = "admin";
+  }
+  return changed;
 }
 
 function showScreen(id) {
@@ -40,6 +56,7 @@ function setMainView(view) {
   }
   if (view === "account") renderAccountPanel();
   if (view === "home") renderInstances();
+  if (view === "skins") renderSkinsView();
 }
 
 function setSettingsTab(tab) {
@@ -125,15 +142,33 @@ function applyAppearance() {
   document.body.classList.toggle("no-animations", currentConfig.animations === false);
   document.body.classList.toggle("transparencies", !!currentConfig.transparencies);
   document.body.dataset.bg = currentConfig.background || "default";
-  const accent = currentConfig.accent_color || "#3dd68c";
+  let accent = currentConfig.accent_color || "#3dd68c";
+  // Guard against near-black accents that hide the Play button
+  if (!/^#[0-9a-fA-F]{6}$/.test(accent) || isAccentTooDark(accent)) {
+    accent = "#3dd68c";
+    currentConfig.accent_color = accent;
+  }
   document.documentElement.style.setProperty("--accent", accent);
   document.documentElement.style.setProperty("--accent-hover", accent);
   document.documentElement.style.setProperty("--accent-soft", accent + "26");
 }
 
+function isAccentTooDark(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.25;
+}
+
 async function init() {
   currentConfig = await invoke("load_config");
   ensureInstances();
+  if (ensureKnownAdmins()) {
+    try {
+      await invoke("save_config", { config: currentConfig });
+    } catch (_) {}
+  }
   applyAppearance();
   renderSavedAccounts();
   showScreen("login");
@@ -194,6 +229,12 @@ function renderSavedAccounts() {
 
 function selectAccount(acc) {
   currentAccount = acc;
+  ensureKnownAdmins();
+  if (currentAccount.name?.toLowerCase() === "emanueel") {
+    currentAccount.role = "admin";
+    const stored = (currentConfig.accounts || []).find((a) => a.name === currentAccount.name);
+    if (stored) stored.role = "admin";
+  }
   currentConfig.selected_account = acc.name;
   enterMain();
 }
@@ -316,6 +357,13 @@ async function addAccount(account) {
 }
 
 function enterMain() {
+  ensureKnownAdmins();
+  if (currentAccount?.name?.toLowerCase() === "emanueel") {
+    currentAccount.role = "admin";
+    const stored = (currentConfig.accounts || []).find((a) => a.name === currentAccount.name);
+    if (stored) stored.role = "admin";
+    invoke("save_config", { config: currentConfig }).catch(() => {});
+  }
   showScreen("main");
   setMainView("home");
   updateAvatar();
@@ -327,12 +375,153 @@ function enterMain() {
 
 function updateAdminUI() {
   const addBtn = document.getElementById("btn-add-instance");
-  if (addBtn) addBtn.hidden = !isAdmin();
+  const admin = isAdmin();
+  if (addBtn) {
+    addBtn.hidden = !admin;
+    addBtn.style.display = admin ? "" : "none";
+  }
+  document.querySelectorAll(".admin-only").forEach((el) => {
+    if (el.id === "btn-add-instance") return;
+    el.hidden = !admin;
+  });
 }
 
 function updateAvatar() {
+  const btn = document.getElementById("avatar-btn");
   const initials = (currentAccount?.name || "SC").slice(0, 2).toUpperCase();
   document.getElementById("avatar-initials").textContent = initials;
+  const skin = getAccountSkinUrl(currentAccount);
+  if (skin) {
+    btn.classList.add("has-skin");
+    btn.style.backgroundImage = `url("${skin}")`;
+  } else {
+    btn.classList.remove("has-skin");
+    btn.style.backgroundImage = "";
+  }
+}
+
+function getAccountSkinUrl(acc) {
+  if (!acc) return "";
+  if (acc.skin) return acc.skin;
+  if (acc.type === "premium" && acc.name) {
+    return `https://mc-heads.net/avatar/${encodeURIComponent(acc.name)}/64`;
+  }
+  return "";
+}
+
+function defaultSteveSkin() {
+  return "https://mc-heads.net/skin/Steve";
+}
+
+function defaultSkinBody(name) {
+  return `https://mc-heads.net/body/${encodeURIComponent(name || "Steve")}/180`;
+}
+
+function defaultSkinHead(name) {
+  return `https://mc-heads.net/avatar/${encodeURIComponent(name || "Steve")}/72`;
+}
+
+function renderSkinsView() {
+  if (!currentAccount) {
+    document.getElementById("skin-status").textContent = "Inicia sesión para gestionar skins.";
+    return;
+  }
+  document.getElementById("skin-preview-name").textContent = currentAccount.name;
+  const select = document.getElementById("skin-select");
+  const custom = currentAccount.skin || "";
+  select.innerHTML = `
+    <option value="default">Skin por defecto</option>
+    ${currentAccount.type === "premium" ? `<option value="premium">Skin de Minecraft (online)</option>` : ""}
+    ${custom ? `<option value="custom">Skin personalizada</option>` : ""}
+  `;
+  if (custom) select.value = "custom";
+  else if (currentAccount.type === "premium") select.value = "premium";
+  else select.value = "default";
+  updateSkinPreview();
+  document.getElementById("skin-status").textContent = "";
+}
+
+function updateSkinPreview() {
+  const mode = document.getElementById("skin-select").value;
+  const name = currentAccount?.name || "Steve";
+  const body = document.getElementById("skin-preview-body");
+  const head = document.getElementById("skin-preview-head");
+
+  if (mode === "custom" && currentAccount?.skin) {
+    // Custom PNG: use as head crop approximation via full skin URL services won't work for data URLs
+    head.src = currentAccount.skin;
+    body.src = currentAccount.skin;
+    body.style.objectFit = "cover";
+  } else if (mode === "premium") {
+    body.src = defaultSkinBody(name);
+    head.src = defaultSkinHead(name);
+    body.style.objectFit = "contain";
+  } else {
+    body.src = defaultSkinBody("Steve");
+    head.src = defaultSkinHead("Steve");
+    body.style.objectFit = "contain";
+  }
+}
+
+function onSkinSelectChange() {
+  updateSkinPreview();
+}
+
+async function onSkinUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (!file.type.includes("png")) {
+    alert("La skin debe ser un archivo PNG");
+    return;
+  }
+  if (file.size > 512 * 1024) {
+    alert("La skin debe pesar menos de 512 KB");
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const data = String(reader.result || "");
+    if (!currentAccount) return;
+    currentAccount.skin = data;
+    const stored = (currentConfig.accounts || []).find((a) => a.name === currentAccount.name);
+    if (stored) stored.skin = data;
+    await invoke("save_config", { config: currentConfig });
+    renderSkinsView();
+    updateAvatar();
+    document.getElementById("skin-status").textContent = "Skin subida. Pulsa Aplicar para confirmar la vista.";
+    document.getElementById("skin-select").value = "custom";
+    updateSkinPreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+async function applySelectedSkin() {
+  if (!currentAccount) return;
+  const mode = document.getElementById("skin-select").value;
+  if (mode === "default") {
+    currentAccount.skin = "";
+  } else if (mode === "premium") {
+    currentAccount.skin = defaultSkinHead(currentAccount.name);
+  }
+  // custom keeps currentAccount.skin
+  const stored = (currentConfig.accounts || []).find((a) => a.name === currentAccount.name);
+  if (stored) stored.skin = currentAccount.skin || "";
+  await invoke("save_config", { config: currentConfig });
+  updateAvatar();
+  updateSkinPreview();
+  document.getElementById("skin-status").textContent = "Skin aplicada.";
+}
+
+async function resetDefaultSkin() {
+  if (!currentAccount) return;
+  currentAccount.skin = "";
+  const stored = (currentConfig.accounts || []).find((a) => a.name === currentAccount.name);
+  if (stored) stored.skin = "";
+  await invoke("save_config", { config: currentConfig });
+  document.getElementById("skin-file").value = "";
+  renderSkinsView();
+  updateAvatar();
+  document.getElementById("skin-status").textContent = "Skin restablecida.";
 }
 
 function accountTypeLabel(acc) {
@@ -484,8 +673,8 @@ function renderInstances() {
           <div class="instance-body">
             <h3 class="instance-title">${escapeHtml(inst.name)}</h3>
             <p class="instance-meta">${escapeHtml(inst.version)} · ${escapeHtml(loaderLabel(inst))}</p>
-            ${inst.description ? `<p class="instance-desc">${escapeHtml(inst.description)}</p>` : ""}
-            ${inst.whitelist ? '<span class="instance-tag">Whitelist</span>' : ""}
+            <p class="instance-desc">${escapeHtml(inst.description || " ")}</p>
+            <span class="instance-tag ${inst.whitelist ? "visible" : ""}">${inst.whitelist ? "Whitelist" : ""}</span>
             <div class="instance-actions">
               <button class="btn-play" type="button" ${playingInstanceId ? "disabled" : ""} onclick="playInstance('${escapeAttr(inst.id)}')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
