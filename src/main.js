@@ -344,13 +344,10 @@ function selectAccount(acc) {
 
 function showPremiumLogin() {
   showScreen("premium");
-  invoke("get_microsoft_auth_url").then((url) => {
-    const link = document.getElementById("ms-auth-link");
-    link.href = url;
-    link.textContent = url;
-  });
-  document.getElementById("auth-code-input").value = "";
   document.getElementById("auth-error").textContent = "";
+  document.getElementById("auth-loading").hidden = false;
+  document.getElementById("auth-form").hidden = true;
+  doMicrosoftLogin();
 }
 
 function showOfflineLogin() {
@@ -381,20 +378,17 @@ async function checkOfflineName() {
 }
 
 async function doMicrosoftLogin() {
-  const code = document.getElementById("auth-code-input").value.trim();
   const err = document.getElementById("auth-error");
-  if (!code) {
-    err.textContent = "Ingresa el código de autorización";
-    return;
-  }
-  err.style.color = "#f0c674";
-  err.textContent = "Conectando con Microsoft...";
+  const loading = document.getElementById("auth-loading");
   try {
-    const account = await invoke("login_microsoft", { authCode: code });
+    const account = await invoke("login_microsoft");
+    loading.hidden = true;
     await addAccount(account);
     currentAccount = account;
     enterMain();
   } catch (e) {
+    loading.hidden = true;
+    document.getElementById("auth-form").hidden = false;
     err.style.color = "";
     err.textContent = "Error: " + e;
   }

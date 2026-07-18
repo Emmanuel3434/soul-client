@@ -1,19 +1,122 @@
 use crate::config::Account;
 use reqwest::Client;
+use std::io::{BufRead, BufReader, Write};
+use std::net::TcpListener;
 
-const MS_CLIENT_ID: &str = "00000000402b5328";
+const MS_CLIENT_ID: &str = "853ca6f9-26ca-457a-b132-ed0afde994e1";
 const MS_TOKEN_URL: &str = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
-const MS_AUTHORIZE_URL: &str = "https://login.live.com/authorize.srf";
+const MS_AUTHORIZE_URL: &str = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
+const REDIRECT_PORT: u16 = 8443;
 const XBOX_AUTH_URL: &str = "https://user.auth.xboxlive.com/user/authenticate";
 const XSTS_AUTH_URL: &str = "https://xsts.auth.xboxlive.com/xsts/authorize";
 const MC_AUTH_URL: &str = "https://api.minecraftservices.com/authentication/login_with_xbox";
 const MC_PROFILE_URL: &str = "https://api.minecraftservices.com/minecraft/profile";
 
+fn redirect_uri() -> String {
+    format!("http://localhost:{}", REDIRECT_PORT)
+}
+
 pub fn get_microsoft_auth_url() -> String {
     format!(
-        "{}?client_id={}&response_type=code&scope=service%%3A%%3Auser.auth.xboxlive.com%%3A%%3AMBI_SSL&redirect_uri=https://login.live.com/owlknie.srf",
-        MS_AUTHORIZE_URL, MS_CLIENT_ID
+        "{}?client_id={}&response_type=code&scope=service%%3A%%3Auser.auth.xboxlive.com%%3A%%3AMBI_SSL&redirect_uri={}",
+        MS_AUTHORIZE_URL, MS_CLIENT_ID, redirect_uri()
     )
+}
+
+pub async fn login_with_microsoft_auto() -> Result<Account, String> {
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", REDIRECT_PORT))
+        .map_err(|e| format!("No se pudo iniciar servidor local en puerto {}: {}", REDIRECT_PORT, e))?;
+
+    listener.set_nonblocking(true).map_err(|e| e.to_string())?;
+
+    let auth_url = get_microsoft_auth_url();
+    open::that(&auth_url).map_err(|e| format!("No se pudo abrir el navegador: {}", e))?;
+
+    let code = tokio::task::spawn_blocking(move || -> Result<String, String> {
+        let start = std::time::Instant::now();
+        let timeout = std::time::Duration::from_secs(120);
+
+        loop {
+            if start.elapsed() > timeout {
+                return Err("Tiempo de espera agotado. Intenta de nuevo.".to_string());
+            }
+
+            match listener.accept() {
+                Ok((stream, _)) => {
+                    stream.set_nonblocking(false).ok();
+                    let reader = BufReader::new(&stream);
+                    let mut writer = std::io::BufWriter::new(&stream);
+
+                    let mut path = String::new();
+                    for line in reader.lines() {
+                        let line = line.map_err(|e| e.to_string())?;
+                        if path.is_empty() {
+                            path = line;
+                            continue;
+                        }
+                        if line.is_empty() {
+                            break;
+                        }
+                    }
+
+                    let code = parse_code_from_redirect(&path)?;
+
+                    let html = r#"<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>SoulClient</title>
+<style>
+  body { font-family: -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #1a1a2e; color: #fff; }
+  .card { text-align: center; padding: 40px; background: #16213e; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+  .check { font-size: 64px; margin-bottom: 16px; }
+  h2 { margin: 0 0 8px; color: #4c8dff; }
+  p { color: #aaa; margin: 0; }
+</style></head><body>
+<div class="card">
+  <div class="check">&#10003;</div>
+  <h2>Login exitoso</h2>
+  <p>Puedes cerrar esta ventana y volver al launcher.</p>
+</div></body></html>"#;
+
+                    let response = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        html.len(),
+                        html
+                    );
+
+                    writer.write_all(response.as_bytes()).ok();
+                    writer.flush().ok();
+
+                    return Ok(code);
+                }
+                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    continue;
+                }
+                Err(e) => {
+                    return Err(format!("Error de conexión: {}", e));
+                }
+            }
+        }
+    })
+    .await
+    .map_err(|e| format!("Error interno: {}", e))??;
+
+    login_with_microsoft(&code).await
+}
+
+fn parse_code_from_redirect(path: &str) -> Result<String, String> {
+    let query = path.split_whitespace().nth(1).unwrap_or("");
+    let query = query.split('?').nth(1).unwrap_or("");
+
+    for param in query.split('&') {
+        let mut parts = param.splitn(2, '=');
+        if let (Some(key), Some(value)) = (parts.next(), parts.next()) {
+            if key == "code" {
+                return Ok(value.to_string());
+            }
+        }
+    }
+
+    Err("No se recibió el código de autorización. Asegúrate de haber iniciado sesión con la cuenta correcta.".to_string())
 }
 
 pub async fn login_with_microsoft(auth_code: &str) -> Result<Account, String> {
@@ -43,7 +146,7 @@ async fn get_microsoft_token(client: &Client, auth_code: &str) -> Result<String,
         ("client_id", MS_CLIENT_ID),
         ("code", auth_code),
         ("grant_type", "authorization_code"),
-        ("redirect_uri", "https://login.live.com/owlknie.srf"),
+        ("redirect_uri", &redirect_uri()),
         ("scope", "service::user.auth.xboxlive.com::MBI_SSL"),
     ];
     let resp = client

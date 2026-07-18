@@ -42,20 +42,16 @@
         <div class="login-card fade-in">
           <button class="back-link" type="button" onclick="showScreen('login')">← Volver</button>
           <h2 class="panel-title">Cuenta premium</h2>
-          <p class="panel-hint">Autoriza tu cuenta Microsoft y pega el código de la URL de redirección.</p>
-          <ol class="auth-steps">
-            <li>
-              <span>Abre este enlace en el navegador</span>
-              <a id="ms-auth-link" class="auth-link" href="#" target="_blank" rel="noopener"></a>
-            </li>
-            <li><span>Copia el código entre <code>code=</code> y <code>&amp;session</code></span></li>
-            <li>
-              <span>Pégalo aquí</span>
-              <input id="auth-code-input" class="input" type="text" placeholder="Código de autorización" autocomplete="off" />
-            </li>
-          </ol>
-          <p id="auth-error" class="error-text" role="alert"></p>
-          <button class="btn btn-primary" type="button" onclick="doMicrosoftLogin()">Conectar cuenta</button>
+          <p class="panel-hint">Se abrirá el navegador para que inicies sesión con tu cuenta Microsoft.</p>
+          <div id="auth-loading" class="auth-loading">
+            <div class="spinner"></div>
+            <p>Esperando autenticación...</p>
+            <p class="auth-hint">Inicia sesión en el navegador que se abrió</p>
+          </div>
+          <div id="auth-form" hidden>
+            <p id="auth-error" class="error-text" role="alert"></p>
+            <button class="btn btn-primary" type="button" onclick="showPremiumLogin()">Reintentar</button>
+          </div>
         </div>
       </div>
     </section>

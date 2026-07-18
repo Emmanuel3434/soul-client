@@ -31,8 +31,8 @@ fn get_microsoft_auth_url() -> String {
 }
 
 #[tauri::command]
-async fn login_microsoft(auth_code: String) -> Result<Account, String> {
-    auth::login_with_microsoft(&auth_code).await
+async fn login_microsoft() -> Result<Account, String> {
+    auth::login_with_microsoft_auto().await
 }
 
 #[tauri::command]
