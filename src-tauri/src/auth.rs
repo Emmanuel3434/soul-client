@@ -18,7 +18,7 @@ fn redirect_uri() -> String {
 
 pub fn get_microsoft_auth_url() -> String {
     format!(
-        "{}?client_id={}&response_type=code&scope=service%%3A%%3Auser.auth.xboxlive.com%%3A%%3AMBI_SSL&redirect_uri={}",
+        "{}?client_id={}&response_type=code&scope=service::user.auth.xboxlive.com::MBI_SSL&redirect_uri={}",
         MS_AUTHORIZE_URL, MS_CLIENT_ID, redirect_uri()
     )
 }
