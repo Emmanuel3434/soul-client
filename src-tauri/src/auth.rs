@@ -4,7 +4,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 
 /// Application (client) ID from Azure Portal → App registrations.
-const MS_CLIENT_ID: &str = "853ca6f9-26ca-457a-b132-ed0afde994e1";
+const MS_CLIENT_ID: &str = "aa091f6a-5373-4285-b546-cf486228a522";
 
 /// Personal Microsoft accounts (Xbox / Minecraft). Your Azure app MUST allow
 /// "Personal Microsoft accounts" (or org + personal) and register redirect URI
