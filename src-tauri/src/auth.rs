@@ -8,10 +8,11 @@ const MS_CLIENT_ID: &str = "853ca6f9-26ca-457a-b132-ed0afde994e1";
 
 /// Personal Microsoft accounts (Xbox / Minecraft). Your Azure app MUST allow
 /// "Personal Microsoft accounts" (or org + personal) and register redirect URI
-/// exactly: http://localhost:8443 under Mobile and desktop applications.
+/// exactly: http://localhost:8443/callback under Mobile and desktop applications.
 const MS_TOKEN_URL: &str = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
 const MS_AUTHORIZE_URL: &str = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
 const REDIRECT_PORT: u16 = 8443;
+const REDIRECT_PATH: &str = "/callback";
 const XBOX_AUTH_URL: &str = "https://user.auth.xboxlive.com/user/authenticate";
 const XSTS_AUTH_URL: &str = "https://xsts.auth.xboxlive.com/xsts/authorize";
 const MC_AUTH_URL: &str = "https://api.minecraftservices.com/authentication/login_with_xbox";
@@ -19,7 +20,7 @@ const MC_PROFILE_URL: &str = "https://api.minecraftservices.com/minecraft/profil
 const MS_SCOPE: &str = "service::user.auth.xboxlive.com::MBI_SSL";
 
 fn redirect_uri() -> String {
-    format!("http://localhost:{}", REDIRECT_PORT)
+    format!("http://localhost:{}{}", REDIRECT_PORT, REDIRECT_PATH)
 }
 
 fn url_encode(s: &str) -> String {
@@ -65,10 +66,10 @@ pub async fn login_with_microsoft_auto() -> Result<Account, String> {
 
         loop {
             if start.elapsed() > timeout {
-                return Err(
-                    "Tiempo de espera agotado. Revisa en Azure: Authentication → Mobile and desktop → Redirect URI = http://localhost:8443, Allow public client flows = Yes, y tipos de cuenta que incluyan cuentas personales de Microsoft."
-                        .to_string(),
-                );
+                return Err(format!(
+                    "Tiempo de espera agotado. En Azure → Authentication → Mobile and desktop agrega exactamente: {}  | Allow public client flows = Yes | cuentas personales de Microsoft.",
+                    redirect_uri()
+                ));
             }
 
             match listener.accept() {
@@ -77,11 +78,11 @@ pub async fn login_with_microsoft_auto() -> Result<Account, String> {
                     let reader = BufReader::new(&stream);
                     let mut writer = std::io::BufWriter::new(&stream);
 
-                    let mut path = String::new();
+                    let mut request_line = String::new();
                     for line in reader.lines() {
                         let line = line.map_err(|e| e.to_string())?;
-                        if path.is_empty() {
-                            path = line;
+                        if request_line.is_empty() {
+                            request_line = line;
                             continue;
                         }
                         if line.is_empty() {
@@ -89,7 +90,32 @@ pub async fn login_with_microsoft_auto() -> Result<Account, String> {
                         }
                     }
 
-                    let code = parse_code_from_redirect(&path)?;
+                    // Ignore favicon / other noise; only /callback completes login.
+                    let target = request_line.split_whitespace().nth(1).unwrap_or("");
+                    if !target.starts_with(REDIRECT_PATH) {
+                        let not_found = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+                        writer.write_all(not_found.as_bytes()).ok();
+                        writer.flush().ok();
+                        continue;
+                    }
+
+                    let code = match parse_code_from_redirect(&request_line) {
+                        Ok(c) => c,
+                        Err(e) => {
+                            let msg = format!(
+                                "<!DOCTYPE html><html><body style='font-family:sans-serif;background:#0a0b0e;color:#fff;padding:40px'><h2>Error de login</h2><p>{}</p></body></html>",
+                                e
+                            );
+                            let response = format!(
+                                "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                                msg.len(),
+                                msg
+                            );
+                            writer.write_all(response.as_bytes()).ok();
+                            writer.flush().ok();
+                            return Err(e);
+                        }
+                    };
 
                     let html = r#"<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>SoulClient</title>
@@ -154,12 +180,17 @@ fn parse_code_from_redirect(path: &str) -> Result<String, String> {
 
     if let Some(msg) = error_desc {
         return Err(format!(
-            "Microsoft rechazó el login: {}. En Azure Portal agrega exactamente http://localhost:8443 como Redirect URI (plataforma Mobile and desktop) y permite cuentas personales de Microsoft.",
-            msg
+            "Microsoft rechazó el login: {}. En Azure agrega exactamente {} (Mobile and desktop) y permite cuentas personales de Microsoft.",
+            msg,
+            redirect_uri()
         ));
     }
 
-    Err("No se recibió el código de autorización. En Azure: Redirect URI = http://localhost:8443 (Mobile and desktop), Allow public client flows = Yes.".to_string())
+    Err(format!(
+        "No se recibió el código. Esperábamos {}?code=... En Azure: Redirect URI = {} | Allow public client flows = Yes.",
+        redirect_uri(),
+        redirect_uri()
+    ))
 }
 
 fn urlencoding_decode(s: &str) -> Option<String> {
