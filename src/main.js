@@ -293,41 +293,10 @@ async function init() {
 
 function renderSavedAccounts() {
   const container = document.getElementById("saved-accounts");
+  if (!container) return;
+  // Cuentas sugeridas ocultas por ahora
   container.innerHTML = "";
-  const accounts = currentConfig.accounts || [];
-  if (!accounts.length) return;
-
-  accounts.forEach((acc, idx) => {
-    const item = document.createElement("div");
-    item.className = "account-item";
-    item.onclick = (e) => {
-      if (e.target.classList.contains("account-delete")) return;
-      selectAccount(acc);
-    };
-
-    const badge = document.createElement("span");
-    badge.className = "account-badge " + (acc.type === "premium" ? "premium" : "offline");
-    badge.textContent = acc.type === "premium" ? "Premium" : "Offline";
-
-    const name = document.createElement("span");
-    name.className = "account-name";
-    name.textContent = acc.name + (acc.role === "admin" ? " · Admin" : "");
-
-    const del = document.createElement("button");
-    del.className = "account-delete";
-    del.type = "button";
-    del.textContent = "×";
-    del.onclick = async (e) => {
-      e.stopPropagation();
-      currentConfig.accounts.splice(idx, 1);
-      if (currentConfig.selected_account === acc.name) currentConfig.selected_account = null;
-      await invoke("save_config", { config: currentConfig });
-      renderSavedAccounts();
-    };
-
-    item.append(badge, name, del);
-    container.appendChild(item);
-  });
+  container.hidden = true;
 }
 
 function selectAccount(acc) {

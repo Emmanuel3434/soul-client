@@ -3,7 +3,12 @@ use reqwest::Client;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 
+/// Application (client) ID from Azure Portal → App registrations.
 const MS_CLIENT_ID: &str = "853ca6f9-26ca-457a-b132-ed0afde994e1";
+
+/// Personal Microsoft accounts (Xbox / Minecraft). Your Azure app MUST allow
+/// "Personal Microsoft accounts" (or org + personal) and register redirect URI
+/// exactly: http://localhost:8443 under Mobile and desktop applications.
 const MS_TOKEN_URL: &str = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
 const MS_AUTHORIZE_URL: &str = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize";
 const REDIRECT_PORT: u16 = 8443;
@@ -11,21 +16,43 @@ const XBOX_AUTH_URL: &str = "https://user.auth.xboxlive.com/user/authenticate";
 const XSTS_AUTH_URL: &str = "https://xsts.auth.xboxlive.com/xsts/authorize";
 const MC_AUTH_URL: &str = "https://api.minecraftservices.com/authentication/login_with_xbox";
 const MC_PROFILE_URL: &str = "https://api.minecraftservices.com/minecraft/profile";
+const MS_SCOPE: &str = "service::user.auth.xboxlive.com::MBI_SSL";
 
 fn redirect_uri() -> String {
     format!("http://localhost:{}", REDIRECT_PORT)
 }
 
+fn url_encode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() * 3);
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char);
+            }
+            _ => out.push_str(&format!("%{:02X}", b)),
+        }
+    }
+    out
+}
+
 pub fn get_microsoft_auth_url() -> String {
+    let redirect = redirect_uri();
     format!(
-        "{}?client_id={}&response_type=code&scope=service::user.auth.xboxlive.com::MBI_SSL&redirect_uri={}",
-        MS_AUTHORIZE_URL, MS_CLIENT_ID, redirect_uri()
+        "{}?client_id={}&response_type=code&response_mode=query&scope={}&redirect_uri={}&prompt=select_account",
+        MS_AUTHORIZE_URL,
+        url_encode(MS_CLIENT_ID),
+        url_encode(MS_SCOPE),
+        url_encode(&redirect),
     )
 }
 
 pub async fn login_with_microsoft_auto() -> Result<Account, String> {
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", REDIRECT_PORT))
-        .map_err(|e| format!("No se pudo iniciar servidor local en puerto {}: {}", REDIRECT_PORT, e))?;
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", REDIRECT_PORT)).map_err(|e| {
+        format!(
+            "No se pudo iniciar el servidor local en el puerto {} (¿está ocupado?): {}",
+            REDIRECT_PORT, e
+        )
+    })?;
 
     listener.set_nonblocking(true).map_err(|e| e.to_string())?;
 
@@ -34,11 +61,14 @@ pub async fn login_with_microsoft_auto() -> Result<Account, String> {
 
     let code = tokio::task::spawn_blocking(move || -> Result<String, String> {
         let start = std::time::Instant::now();
-        let timeout = std::time::Duration::from_secs(120);
+        let timeout = std::time::Duration::from_secs(180);
 
         loop {
             if start.elapsed() > timeout {
-                return Err("Tiempo de espera agotado. Intenta de nuevo.".to_string());
+                return Err(
+                    "Tiempo de espera agotado. Revisa en Azure: Authentication → Mobile and desktop → Redirect URI = http://localhost:8443, Allow public client flows = Yes, y tipos de cuenta que incluyan cuentas personales de Microsoft."
+                        .to_string(),
+                );
             }
 
             match listener.accept() {
@@ -64,11 +94,11 @@ pub async fn login_with_microsoft_auto() -> Result<Account, String> {
                     let html = r#"<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>SoulClient</title>
 <style>
-  body { font-family: -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #1a1a2e; color: #fff; }
-  .card { text-align: center; padding: 40px; background: #16213e; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-  .check { font-size: 64px; margin-bottom: 16px; }
+  body { font-family: -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #0a0b0e; color: #fff; }
+  .card { text-align: center; padding: 40px; background: #12141a; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+  .check { font-size: 64px; margin-bottom: 16px; color: #4c8dff; }
   h2 { margin: 0 0 8px; color: #4c8dff; }
-  p { color: #aaa; margin: 0; }
+  p { color: #9aa3b5; margin: 0; }
 </style></head><body>
 <div class="card">
   <div class="check">&#10003;</div>
@@ -107,16 +137,53 @@ fn parse_code_from_redirect(path: &str) -> Result<String, String> {
     let query = path.split_whitespace().nth(1).unwrap_or("");
     let query = query.split('?').nth(1).unwrap_or("");
 
+    let mut error_desc = None;
     for param in query.split('&') {
         let mut parts = param.splitn(2, '=');
         if let (Some(key), Some(value)) = (parts.next(), parts.next()) {
             if key == "code" {
                 return Ok(value.to_string());
             }
+            if key == "error_description" || key == "error" {
+                error_desc = Some(
+                    urlencoding_decode(value).unwrap_or_else(|| value.replace('+', " ")),
+                );
+            }
         }
     }
 
-    Err("No se recibió el código de autorización. Asegúrate de haber iniciado sesión con la cuenta correcta.".to_string())
+    if let Some(msg) = error_desc {
+        return Err(format!(
+            "Microsoft rechazó el login: {}. En Azure Portal agrega exactamente http://localhost:8443 como Redirect URI (plataforma Mobile and desktop) y permite cuentas personales de Microsoft.",
+            msg
+        ));
+    }
+
+    Err("No se recibió el código de autorización. En Azure: Redirect URI = http://localhost:8443 (Mobile and desktop), Allow public client flows = Yes.".to_string())
+}
+
+fn urlencoding_decode(s: &str) -> Option<String> {
+    let bytes = s.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'+' => {
+                out.push(b' ');
+                i += 1;
+            }
+            b'%' if i + 2 < bytes.len() => {
+                let hex = std::str::from_utf8(&bytes[i + 1..i + 3]).ok()?;
+                out.push(u8::from_str_radix(hex, 16).ok()?);
+                i += 3;
+            }
+            b => {
+                out.push(b);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8(out).ok()
 }
 
 pub async fn login_with_microsoft(auth_code: &str) -> Result<Account, String> {
@@ -127,8 +194,8 @@ pub async fn login_with_microsoft(auth_code: &str) -> Result<Account, String> {
 
     let ms_token = get_microsoft_token(&client, auth_code).await?;
     let xbox_data = get_xbox_token(&client, &ms_token).await?;
-    let xsts_token = get_xsts_token(&client, &xbox_data).await?;
-    let mc_token = get_minecraft_token(&client, &xsts_token).await?;
+    let (uhs, xsts_token) = get_xsts_token(&client, &xbox_data).await?;
+    let mc_token = get_minecraft_token(&client, &uhs, &xsts_token).await?;
     let (profile_id, profile_name) = get_minecraft_profile(&client, &mc_token).await?;
 
     Ok(Account {
@@ -142,12 +209,13 @@ pub async fn login_with_microsoft(auth_code: &str) -> Result<Account, String> {
 }
 
 async fn get_microsoft_token(client: &Client, auth_code: &str) -> Result<String, String> {
+    let redirect = redirect_uri();
     let params = [
         ("client_id", MS_CLIENT_ID),
         ("code", auth_code),
         ("grant_type", "authorization_code"),
-        ("redirect_uri", &redirect_uri()),
-        ("scope", "service::user.auth.xboxlive.com::MBI_SSL"),
+        ("redirect_uri", redirect.as_str()),
+        ("scope", MS_SCOPE),
     ];
     let resp = client
         .post(MS_TOKEN_URL)
@@ -159,7 +227,10 @@ async fn get_microsoft_token(client: &Client, auth_code: &str) -> Result<String,
     if !resp.status().is_success() {
         let status = resp.status();
         let body = resp.text().await.unwrap_or_default();
-        return Err(format!("Microsoft token error ({}): {}", status, body));
+        return Err(format!(
+            "Microsoft token error ({}): {}. Verifica que el Redirect URI en Azure sea exactamente {} y que Allow public client flows esté en Yes.",
+            status, body, redirect
+        ));
     }
 
     let body: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
@@ -174,7 +245,7 @@ async fn get_xbox_token(client: &Client, ms_token: &str) -> Result<serde_json::V
         "Properties": {
             "AuthMethod": "RPS",
             "SiteName": "user.auth.xboxlive.com",
-            "RpsTicket": ms_token
+            "RpsTicket": format!("d={}", ms_token)
         },
         "RelyingParty": "http://auth.xboxlive.com",
         "TokenType": "JWT"
@@ -187,17 +258,19 @@ async fn get_xbox_token(client: &Client, ms_token: &str) -> Result<serde_json::V
         .map_err(|e| e.to_string())?;
 
     if !resp.status().is_success() {
-        return Err(format!("Xbox auth failed: {}", resp.status()));
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("Xbox auth failed: {}", body));
     }
     resp.json().await.map_err(|e| e.to_string())
 }
 
-async fn get_xsts_token(client: &Client, xbox_data: &serde_json::Value) -> Result<String, String> {
+async fn get_xsts_token(
+    client: &Client,
+    xbox_data: &serde_json::Value,
+) -> Result<(String, String), String> {
     let token = xbox_data
-        .get("IssueAfter")
-        .and_then(|ia| ia.get("Token"))
+        .get("Token")
         .and_then(|t| t.as_str())
-        .or_else(|| xbox_data.get("Token").and_then(|t| t.as_str()))
         .ok_or("No token in Xbox response")?;
 
     let payload = serde_json::json!({
@@ -217,20 +290,34 @@ async fn get_xsts_token(client: &Client, xbox_data: &serde_json::Value) -> Resul
 
     if !resp.status().is_success() {
         return Err(
-            "XSTS authentication failed. The Microsoft account may not have an Xbox profile / Game Pass.".to_string(),
+            "XSTS authentication failed. La cuenta Microsoft necesita un perfil Xbox y Minecraft Java Edition."
+                .to_string(),
         );
     }
 
     let body: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
-    body.get("Token")
+    let xsts = body
+        .get("Token")
         .and_then(|t| t.as_str())
-        .map(|s| s.to_string())
-        .ok_or_else(|| "No token in XSTS response".to_string())
+        .ok_or_else(|| "No token in XSTS response".to_string())?
+        .to_string();
+
+    let uhs = body
+        .pointer("/DisplayClaims/xui/0/uhs")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "No user hash (uhs) in XSTS response".to_string())?
+        .to_string();
+
+    Ok((uhs, xsts))
 }
 
-async fn get_minecraft_token(client: &Client, xsts_token: &str) -> Result<String, String> {
+async fn get_minecraft_token(
+    client: &Client,
+    uhs: &str,
+    xsts_token: &str,
+) -> Result<String, String> {
     let payload = serde_json::json!({
-        "identityToken": format!("XBL3.0 x={};", xsts_token)
+        "identityToken": format!("XBL3.0 x={};{}", uhs, xsts_token)
     });
     let resp = client
         .post(MC_AUTH_URL)
@@ -240,7 +327,8 @@ async fn get_minecraft_token(client: &Client, xsts_token: &str) -> Result<String
         .map_err(|e| e.to_string())?;
 
     if !resp.status().is_success() {
-        return Err(format!("Minecraft auth failed: {}", resp.status()));
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("Minecraft auth failed: {}", body));
     }
 
     let body: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
@@ -259,7 +347,7 @@ async fn get_minecraft_profile(client: &Client, mc_token: &str) -> Result<(Strin
         .map_err(|e| e.to_string())?;
 
     if !resp.status().is_success() {
-        return Err("No Minecraft profile found for this Microsoft account. Make sure you own Minecraft Java Edition.".to_string());
+        return Err("No se encontró perfil de Minecraft. Asegúrate de tener Minecraft Java Edition en esa cuenta Microsoft.".to_string());
     }
 
     let body: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
@@ -299,12 +387,13 @@ pub fn login_offline(username: &str, existing_accounts: &[Account]) -> Result<Ac
             "Ese nombre ya está en uso. Elige un nombre diferente.".to_string(),
         );
     }
-    let offline_uuid = uuid::Uuid::new_v3(&uuid::Uuid::NAMESPACE_DNS, username.as_bytes());
+
+    let id = uuid::Uuid::new_v3(&uuid::Uuid::NAMESPACE_DNS, username.as_bytes()).to_string();
     Ok(Account {
         name: username.to_string(),
-        id: offline_uuid.as_simple().to_string(),
+        id,
         account_type: "offline".to_string(),
-        token: "0".to_string(),
+        token: String::new(),
         role: "user".to_string(),
         skin: String::new(),
     })
